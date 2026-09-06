@@ -1,75 +1,105 @@
-# React + TypeScript + Vite
+# 📊 RAG Benchmarking Engine — Frontend Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A production-grade, interactive analytics dashboard built with **Vite**, **React**, **TypeScript**, and **Tailwind CSS v4** to visualize pre-retrieval RAG evaluation metrics across an 18-configuration matrix ($3 \text{ Chunkers} \times 3 \text{ Embeddings} \times 2 \text{ Vector DBs}$).
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Tech Stack
 
-## React Compiler
+- **Framework**: React 19 + Vite 6
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4 + `@tailwindcss/vite`
+- **Data Visualization**: Chart.js + `react-chartjs-2`
+- **HTTP Client**: Axios (configured with Vite proxy to FastAPI)
+- **Icons**: Lucide React
+- **Progress Bar**: NProgress
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## ⚡ Quickstart Guide
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Clone the Repository & Navigate
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+git clone https://github.com/Sumitchauhan-co/Project-exhibition
+cd frontend
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Install Dependencies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm install
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Start Development Server
 
+```bash
+npm run dev
+```
+
+The application will launch locally at: `http://localhost:5173`
+
+---
+
+## 🔌 API Proxy Configuration
+
+The Vite dev server automatically proxies `/api/*` endpoint requests to the FastAPI backend running on `http://127.0.0.1:8000`.
+
+If your backend port or host changes, update `vite.config.ts`:
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+	plugins: [react(), tailwindcss()],
+	server: {
+		port: 3000,
+		proxy: {
+			'/api': {
+				target: 'http://127.0.0.1:8000',
+				changeOrigin: true,
+				secure: false,
+			},
+		},
+	},
+});
+```
+
+---
+
+## 📦 Building for Production
+
+To create an optimized production build of static HTML, CSS, and JS assets:
+
+```bash
+npm run build
+```
+
+To preview the production build locally:
+
+```bash
+npm run preview
+```
+
+---
+
+## 📁 Repository Architecture
+
+```plaintext
+frontend/
+├── src/
+│   ├── components/
+│   │   └── Skeleton.tsx       # Skeleton loaders for chart & cards
+│   ├── types/
+│   │   └── benchmark.ts       # TypeScript interfaces for API payloads
+│   ├── App.tsx                # Main Dashboard & Chart.js integration
+│   ├── index.css              # Tailwind v4 import & NProgress styles
+│   └── main.tsx               # React DOM mounting entry point
+├── public/                    # Static assets
+├── vite.config.ts             # Vite + Tailwind v4 + API Proxy setup
+├── tsconfig.json              # TypeScript compiler settings
+└── package.json
 ```
