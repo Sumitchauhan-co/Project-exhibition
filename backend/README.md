@@ -25,7 +25,7 @@ Follow these steps to set up the environment and launch the FastAPI server.
 ### 1. Clone the Repository & Navigate
 
 ```bash
-git clone https://github.com/Sumitchauhan-co/Project-exhibition
+git clone https://github.com/Sumitchauhan-co/Project-exhibition.git
 cd rag-benchmark-backend
 ```
 
@@ -70,28 +70,9 @@ Once the server is running, you can access the interactive API docs directly in 
 
 ### Core Endpoints
 
-| Method   | Endpoint                 | Description                                                               |
-| :------- | :----------------------- | :------------------------------------------------------------------------ |
-| **GET**  | `/`                      | Health check endpoint.                                                    |
-| **GET**  | `/api/v1/matrix-results` | Serves pre-computed RAGAS benchmark metrics across all 18 configurations. |
-| **GET**  | `/api/v1/summary`        | Serves aggregated metrics and the winning pipeline configuration.         |
-| **POST** | `/api/v1/run-benchmark`  | Triggers a background evaluation run for a target PDF in `data/`.         |
+| Method  | Endpoint               | Description                                                               |
+| :------ | :--------------------- | :------------------------------------------------------------------------ |
+| **GET** | `/health`              | Health check endpoint.                                                    |
+| **GET** | `/api/v1/evaluate-pdf` | Serves pre-computed RAGAS benchmark metrics across all 18 configurations. |
 
 ---
-
-## 📁 Repository Architecture
-
-```plaintext
-rag-benchmark-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py               # FastAPI application & CORS configuration
-│   ├── benchmark_engine.py   # LangChain & RAGAS evaluation runner
-│   └── schemas.py            # Pydantic data validation models
-├── data/
-│   ├── sample_handbook.pdf   # Input target PDF corpus
-│   └── benchmark_results.json# Generated JSON logs
-├── .env.example              # Sample environment variables
-├── pyproject.toml            # Project dependencies & metadata
-└── uv.lock                   # Deterministic package lockfile
-```

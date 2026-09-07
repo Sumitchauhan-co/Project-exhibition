@@ -12,6 +12,7 @@ export const MatrixTable: React.FC<MatrixTableProps> = ({ data }) => (
 				<thead className="border-b border-border bg-muted text-xs uppercase text-muted-foreground">
 					<tr>
 						<th className="px-6 py-3">Chunker</th>
+						<th className="px-6 py-3">Vector DB</th>
 						<th className="px-6 py-3">Embedding</th>
 						<th className="px-6 py-3">LLM</th>
 						<th className="px-6 py-3">Latency</th>
@@ -28,6 +29,9 @@ export const MatrixTable: React.FC<MatrixTableProps> = ({ data }) => (
 						>
 							<td className="px-6 py-4 font-medium text-foreground">
 								{row.chunking_strategy}
+							</td>
+							<td className="px-6 py-4 font-medium text-foreground">
+								{row.vector_db}
 							</td>
 							<td className="px-6 py-4">{row.embedding_model}</td>
 							<td className="px-6 py-4 font-medium text-foreground">

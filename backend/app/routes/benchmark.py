@@ -10,19 +10,16 @@ from ..config import (
     DEV_EMBED_MODEL_2,
     DEV_LLM_MODEL_1,
     DEV_LLM_MODEL_2,
+    DEV_VECTOR_DB,
     PROD_EMBED_MODEL_1,
     PROD_EMBED_MODEL_2,
     PROD_LLM_MODEL_1,
     PROD_LLM_MODEL_2,
+    PROD_VECTOR_DB,
 )
 from ..services.evaluator import RAGBenchmarkEngine
 
 router = APIRouter(prefix="/api/v1", tags=["Benchmark"])
-
-
-@router.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "RAG Benchmark API"}
 
 
 @router.post("/evaluate-pdf")
@@ -49,21 +46,23 @@ async def evaluate_uploaded_pdf(file: UploadFile = File(...)):
         if APP_ENV == "prod":
             embed_models = [PROD_EMBED_MODEL_1, PROD_EMBED_MODEL_2]
             llms = [PROD_LLM_MODEL_1, PROD_LLM_MODEL_2]
+            active_vector_db = PROD_VECTOR_DB
         else:
             embed_models = [DEV_EMBED_MODEL_1, DEV_EMBED_MODEL_2]
             llms = [DEV_LLM_MODEL_1, DEV_LLM_MODEL_2]
+            active_vector_db = DEV_VECTOR_DB
 
         matrix_results = []
         engine = RAGBenchmarkEngine(tmp_path)
 
-        # 4 Chunkers x 2 Embeddings = 8 vector database index creations
+        # Loop through chunking strategies and embedding models
         for strat in strategies:
             for embed_model in embed_models:
                 retriever, embed_fn = engine.get_retriever_for_config(
                     strat, embed_model
                 )
 
-                # Evaluates 2 LLMs per vector store (16 total evaluations)
+                # Evaluate against each target LLM evaluator
                 for llm in llms:
                     result = engine.evaluate_retriever_with_llm(
                         retriever=retriever,
@@ -71,12 +70,14 @@ async def evaluate_uploaded_pdf(file: UploadFile = File(...)):
                         chunk_strat=strat,
                         embed_model=embed_model,
                         llm_model=llm,
-                        test_dataset=None,  # Uses default test questions if None
+                        vector_db=active_vector_db,
+                        test_dataset=None,
                     )
                     matrix_results.append(result)
 
         return {
             "filename": file.filename,
+            "vector_db": active_vector_db,
             "total_runs": len(matrix_results),
             "results": matrix_results,
         }

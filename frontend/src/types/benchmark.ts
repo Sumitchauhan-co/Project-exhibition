@@ -10,8 +10,8 @@ export interface PipelineResult {
 	chunking_strategy: string;
 	embedding_model?: string;
 	llm_model: string;
-	// vector_db?: string;
-	environment?: string;
+	vector_db: string;
+	environment: string;
 	latency_ms: number;
 	metrics: MetricScores;
 }

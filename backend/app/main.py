@@ -35,3 +35,8 @@ app.add_middleware(
 )
 
 app.include_router(benchmark_router)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "RAG Benchmark API"}

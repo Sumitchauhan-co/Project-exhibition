@@ -13,12 +13,14 @@ from ..config import (
     APP_ENV,
     DEV_EMBED_MODEL_1,
     DEV_LLM_MODEL_1,
+    DEV_VECTOR_DB,
     OLLAMA_BASE_URL,
     OPENAI_API_KEY,
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME,
     PROD_EMBED_MODEL_1,
     PROD_LLM_MODEL_1,
+    PROD_VECTOR_DB,
 )
 
 DEFAULT_TEST_DATASET = [
@@ -131,6 +133,7 @@ class RAGBenchmarkEngine:
         chunk_strat: str,
         embed_model: str,
         llm_model: str,
+        vector_db: str | None = None,
         test_dataset: List[Dict] | None = None,
     ) -> Dict[str, Any]:
         """Reuses an existing retriever to run LLM context retrieval and RAGAS evaluation."""
@@ -144,6 +147,9 @@ class RAGBenchmarkEngine:
             context_recall,
             faithfulness,
         )
+
+        if vector_db is None:
+            vector_db = PROD_VECTOR_DB if APP_ENV == "prod" else DEV_VECTOR_DB
 
         if test_dataset is None:
             test_dataset = DEFAULT_TEST_DATASET
@@ -234,6 +240,7 @@ class RAGBenchmarkEngine:
 
         return {
             "environment": APP_ENV,
+            "vector_db": vector_db,
             "chunking_strategy": chunk_strat,
             "embedding_model": embed_model,
             "llm_model": llm_model,
@@ -246,6 +253,7 @@ class RAGBenchmarkEngine:
         chunk_strat: str,
         embed_model: str,
         llm_model: str,
+        vector_db: str | None = None,
         test_dataset: List[Dict] | None = None,
     ) -> Dict[str, Any]:
         """Backwards-compatible helper for single runs."""
@@ -256,6 +264,7 @@ class RAGBenchmarkEngine:
             chunk_strat=chunk_strat,
             embed_model=embed_model,
             llm_model=llm_model,
+            vector_db=vector_db,
             test_dataset=test_dataset,
         )
 
@@ -265,6 +274,7 @@ def evaluate_pdf_with_ragas(
     chunk_strat: str = "recursive",
     embed_model: str | None = None,
     llm_model: str | None = None,
+    vector_db: str | None = None,
     test_dataset: List[Dict] | None = None,
 ) -> Dict[str, Any]:
     if embed_model is None:
@@ -273,5 +283,14 @@ def evaluate_pdf_with_ragas(
     if llm_model is None:
         llm_model = PROD_LLM_MODEL_1 if APP_ENV == "prod" else DEV_LLM_MODEL_1
 
+    if vector_db is None:
+        vector_db = PROD_VECTOR_DB if APP_ENV == "prod" else DEV_VECTOR_DB
+
     engine = RAGBenchmarkEngine(pdf_path)
-    return engine.run_single_config(chunk_strat, embed_model, llm_model, test_dataset)
+    return engine.run_single_config(
+        chunk_strat=chunk_strat,
+        embed_model=embed_model,
+        llm_model=llm_model,
+        vector_db=vector_db,
+        test_dataset=test_dataset,
+    )
