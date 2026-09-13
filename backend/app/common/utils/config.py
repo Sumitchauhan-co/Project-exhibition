@@ -57,3 +57,5 @@ PROD_EMBED_MODEL_2 = os.getenv("PROD_EMBED_MODEL_2", "text-embedding-3-large")
 PROD_VECTOR_DB = os.getenv("PROD_VECTOR_DB", "pg-vector")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID")

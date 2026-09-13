@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useAuthStore from '../../store/store';
 import axios from 'axios';
+import { GoogleLogin } from '@react-oauth/google';
 
 interface SignInFormProps {
 	onSuccess?: () => void;
@@ -17,6 +18,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({
 	const [error, setError] = useState<string | null>(null);
 
 	const signin = useAuthStore((state) => state.signin);
+	const googleSignin = useAuthStore((state) => state.googleSignin);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -28,6 +30,33 @@ export const SignInForm: React.FC<SignInFormProps> = ({
 			if (onSuccess) onSuccess();
 		} catch (err) {
 			let message = 'Invalid email or password';
+
+			if (axios.isAxiosError(err)) {
+				message = err.response?.data?.detail || err.message || message;
+			} else if (err instanceof Error) {
+				message = err.message;
+			}
+
+			setError(message);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleGoogleSuccess = async (credentialResponse: any) => {
+		if (!credentialResponse.credential) {
+			setError('Google sign-in failed: No token returned');
+			return;
+		}
+
+		setIsLoading(true);
+		setError(null);
+
+		try {
+			await googleSignin(credentialResponse.credential);
+			if (onSuccess) onSuccess();
+		} catch (err) {
+			let message = 'Google sign-in failed';
 
 			if (axios.isAxiosError(err)) {
 				message = err.response?.data?.detail || err.message || message;
@@ -57,6 +86,26 @@ export const SignInForm: React.FC<SignInFormProps> = ({
 					{error}
 				</div>
 			)}
+
+			<div className="mb-4 flex justify-center w-full">
+				<GoogleLogin
+					onSuccess={handleGoogleSuccess}
+					onError={() => setError('Google Authentication Failed')}
+					useOneTap
+					width="100%"
+				/>
+			</div>
+
+			<div className="relative my-6">
+				<div className="absolute inset-0 flex items-center">
+					<div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+				</div>
+				<div className="relative flex justify-center text-xs uppercase">
+					<span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500 dark:text-zinc-400">
+						Or continue with
+					</span>
+				</div>
+			</div>
 
 			<form
 				onSubmit={handleSubmit}

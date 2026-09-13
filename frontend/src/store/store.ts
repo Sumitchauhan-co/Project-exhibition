@@ -10,6 +10,7 @@ interface AuthState {
 	setAccessToken: (token: string | null) => void;
 	setUser: (user: User | null) => void;
 	signin: (email: string, password: string) => Promise<void>;
+	googleSignin: (idToken: string) => Promise<void>;
 	signup: (fullName: string, email: string, password: string) => Promise<void>;
 	signout: () => Promise<void>;
 	getUser: () => Promise<void>;
@@ -31,6 +32,15 @@ const useAuthStore = create<AuthState>((set, get) => ({
 		const res = await api.post<{ access_token: string }>('/auth/signin', {
 			email,
 			password,
+		});
+
+		set({ accessToken: res.data.access_token, isAuthenticated: true });
+		await get().getUser();
+	},
+
+	googleSignin: async (idToken) => {
+		const res = await api.post<{ access_token: string }>('/auth/google', {
+			id_token: idToken,
 		});
 
 		set({ accessToken: res.data.access_token, isAuthenticated: true });

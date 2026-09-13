@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from app.module.billing.model import UserCredit
 
 
-# Base shared fields
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
     full_name: Optional[str] = None
@@ -14,19 +13,16 @@ class UserBase(SQLModel):
     is_superuser: bool = False
 
 
-# Database Table
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    hashed_password: str
+    hashed_password: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    # 1-to-1 Relationship with UserCredit
     credit: Optional["UserCredit"] = Relationship(
         back_populates="user", sa_relationship_kwargs={"uselist": False}
     )
 
 
-# Request DTOs
 class UserSignup(UserBase):
     password: str
 
@@ -36,11 +32,14 @@ class UserSignin(SQLModel):
     password: str
 
 
+class GoogleSignin(SQLModel):
+    id_token: str
+
+
 class RefreshTokenRequest(SQLModel):
     refresh_token: str
 
 
-# Response DTOs
 class UserRead(UserBase):
     id: int
     created_at: datetime

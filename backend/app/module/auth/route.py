@@ -4,6 +4,7 @@ from sqlmodel import Session
 from app.common.db.database import get_session
 from app.module.auth.deps import get_current_user
 from app.module.auth.model import (
+    GoogleSignin,
     Token,
     User,
     UserRead,
@@ -63,6 +64,40 @@ def signin(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
+        )
+
+    access_token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id)
+
+    set_refresh_cookie(response, refresh_token)
+
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
+
+
+@router.post("/google", response_model=Token)
+def google_auth(
+    payload: GoogleSignin,
+    response: Response,
+    session: Session = Depends(get_session),
+):
+    """Verifies Google ID token, logs in or registers user, and sets cookies."""
+    try:
+        google_payload = AuthService.verify_google_token(payload.id_token)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token.",
+        )
+
+    user = AuthService.authenticate_or_create_google_user(session, google_payload)
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user account.",
         )
 
     access_token = create_access_token(user.id)
