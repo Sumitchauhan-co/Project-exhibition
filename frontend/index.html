@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
   <!-- Web App Manifest -->
-  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="manifest" href="/site.manifest.json" />
 
   <!-- PWA Theme & Mobile Browser Controls -->
   <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
@@ -36,7 +36,16 @@
   <meta property="og:description" content="Benchmark latency, context recall, and faithfulness across LLMs." />
   <meta property="og:image" content="/og-image.png" />
 
-  <!-- Google Tag (gtag.js) with Dynamic Vite Environment Variable -->
+  <!-- Twitter Card Data -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="RAG Matrix | Automated RAG Evaluation Suite" />
+  <meta name="twitter:description" content="Benchmark latency, context recall, and faithfulness across LLMs." />
+  <meta name="twitter:image" content="/og-image.png" />
+
+  <!-- Preconnect for Performance Optimization -->
+  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+
+  <!-- Google Tag (gtag.js) -->
   <script type="module">
     const gaId = import.meta.env.VITE_GA_MEASUREMENT_ID;
     if (gaId) {
@@ -46,14 +55,17 @@
       document.head.appendChild(script);
 
       window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
+      function gtag() { window.dataLayer.push(arguments); }
       window.gtag = gtag;
+
       gtag('js', new Date());
       gtag('consent', 'default', {
-        'analytics_storage': 'denied',
+        'analytics_storage': 'granted',
         'ad_storage': 'denied'
       });
       gtag('config', gaId);
+    } else {
+      console.warn("GA Measurement ID is missing from environment variables.");
     }
   </script>
 </head>
