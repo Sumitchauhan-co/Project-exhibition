@@ -10,11 +10,11 @@ export const SelectedFileCard: React.FC<SelectedFileCardProps> = ({
 	file,
 	onRemove,
 }) => (
-	<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-lg flex items-center justify-between text-left">
-		<div className="flex items-center gap-3">
-			<FileText className="w-8 h-8 text-blue-600 dark:text-blue-400 shrink-0" />
-			<div>
-				<p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[280px]">
+	<div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-left dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+		<div className="flex min-w-0 items-center gap-3">
+			<FileText className="h-8 w-8 shrink-0 text-blue-600 dark:text-blue-400" />
+			<div className="min-w-0">
+				<p className="truncate text-sm font-semibold text-slate-900 dark:text-white sm:max-w-[280px]">
 					{file.name}
 				</p>
 				<p className="text-xs text-slate-500 dark:text-slate-400">
@@ -24,10 +24,10 @@ export const SelectedFileCard: React.FC<SelectedFileCardProps> = ({
 		</div>
 		<button
 			onClick={onRemove}
-			className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded cursor-pointer"
+			className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
 			aria-label="Remove file"
 		>
-			<X className="w-4 h-4" />
+			<X className="h-4 w-4" />
 		</button>
 	</div>
 );

@@ -72,7 +72,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
 	};
 
 	return (
-		<div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 transition-all">
+		<div className="mx-auto w-full max-w-md rounded-xl border border-zinc-200 bg-white p-4 shadow-md transition-all dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
 			<div className="mb-6 text-center">
 				<h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
 					Create Account

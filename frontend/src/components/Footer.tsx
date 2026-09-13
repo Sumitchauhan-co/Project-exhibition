@@ -122,10 +122,10 @@ export const Footer: React.FC<FooterProps> = ({ onOpenCookieSettings }) => {
 			className="w-full border-t border-zinc-200/80 bg-white/80 dark:border-zinc-800/80 dark:bg-zinc-950/80 backdrop-blur-md transition-colors"
 			aria-label="Site Footer"
 		>
-			<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-				<div className="grid grid-cols-1 gap-8 md:grid-cols-4 lg:grid-cols-5">
+			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+				<div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
 					{/* Brand & Operational Status */}
-					<div className="md:col-span-2 space-y-4">
+					<div className="space-y-4 sm:col-span-2 md:col-span-2">
 						<Link
 							to="/"
 							className="inline-flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100 hover:opacity-90 transition-opacity"

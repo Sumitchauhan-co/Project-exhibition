@@ -6,7 +6,7 @@ export const SignInPage: React.FC = () => {
 	const navigate = useNavigate();
 
 	return (
-		<div className="min-h-screen bg-zinc-50 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+		<div className="flex min-h-screen flex-col justify-center bg-zinc-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
 			<SignInForm
 				onSuccess={() => navigate('/')}
 				onNavigateToSignUp={() => navigate('/signup')}

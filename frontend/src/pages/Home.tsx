@@ -123,12 +123,12 @@ export default function Home() {
 		selectedEmbeddings.length === 0;
 
 	return (
-		<div className="max-w-3xl mx-auto my-8 space-y-6 text-center">
+		<div className="mx-auto my-6 w-full max-w-4xl space-y-6 px-4 text-center sm:my-8 sm:px-6">
 			<HomeHeader />
 
 			<Dropzone onFileSelect={handleFileSelect} />
 
-			{error && <p className="text-sm text-destructive font-medium">{error}</p>}
+			{error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
 			{file && (
 				<SelectedFileCard
@@ -150,7 +150,7 @@ export default function Home() {
 			<Button
 				onClick={handleStartChunking}
 				disabled={isFormInvalid}
-				className="w-full py-6 text-base font-semibold"
+				className="w-full py-4 text-sm font-semibold sm:py-6 sm:text-base"
 				size="lg"
 			>
 				{isProcessing || isEvaluating ? (

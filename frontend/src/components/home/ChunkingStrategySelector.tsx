@@ -193,24 +193,24 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
 		options.length > 0 && selectedIds.length === options.length;
 
 	return (
-		<div className="p-5 border border-border rounded-xl bg-card space-y-4 shadow-sm">
-			<div className="flex items-center justify-between">
+		<div className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center space-x-2">
 					{icon}
-					<h3 className="font-semibold text-base text-foreground">
+					<h3 className="text-sm font-semibold text-foreground sm:text-base">
 						{title} ({selectedIds.length}/{options.length})
 					</h3>
 				</div>
 				<button
 					type="button"
 					onClick={onToggleSelectAll}
-					className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+					className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
 				>
 					{isAllSelected ? 'Deselect All' : 'Select All'}
 				</button>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+			<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 				{options.map((opt) => {
 					const isSelected = selectedIds.includes(opt.id);
 					return (
