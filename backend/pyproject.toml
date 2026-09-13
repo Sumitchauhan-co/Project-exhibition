@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt==4.0.1",
     "chromadb>=1.5.9",
     "datasets>=5.0.1",
     "fastapi>=0.141.1",
@@ -14,16 +15,26 @@ dependencies = [
     "langchain-google-vertexai>=3.2.4",
     "langchain-huggingface>=1.2.2",
     "langchain-ollama>=1.1.0",
-    "langchain-pinecone>=0.2.13",
+    "langchain-postgres>=0.0.17",
     "langchain-text-splitters>=1.1.2",
-    "numpy>=2.5.2",
-    "pinecone>=7.3.0",
+    "passlib>=1.7.4",
+    "psycopg2-binary>=2.9.13",
     "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "pyjwt>=2.14.0",
     "pypdf>=6.17.0",
     "pypdf2>=3.0.1",
     "python-dotenv>=1.2.3",
     "python-multipart>=0.0.32",
     "ragas>=0.4.3",
+    "razorpay>=2.0.1",
     "sentence-transformers>=6.0.1",
+    "sqladmin>=0.31.1",
+    "sqlmodel>=0.0.42",
     "uvicorn>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
 ]

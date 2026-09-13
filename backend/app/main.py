@@ -1,16 +1,38 @@
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqladmin import Admin, ModelView
 
-from app.routes.benchmark import router as benchmark_router
-from app.config import APP_ENV, APP_URL
+if __package__ in {None, ""}:
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
+from app.common.db.database import engine, init_db
+from app.common.utils import APP_ENV, APP_URL
+from app.common.utils.api_router import api_v1_router
+
+# Import SQLModel entities for Admin visual inspection
+from app.module.auth.model import User
+
+
+# Define Admin views for SQLModel tables
+class UserAdmin(ModelView, model=User):
+    column_list = [User.id, User.email, User.full_name, User.is_active, User.created_at]
+    column_searchable_list = [User.email, User.full_name]
+    column_sortable_list = [User.id, User.created_at]
+    icon = "fa-solid font-bold fa-user"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for startup and shutdown tasks."""
     print(f"🚀 Application starting in [{APP_ENV.upper()}] mode...")
+    init_db()  # Initializes SQLModel database tables on application startup
     yield
     print("🛑 Application shutting down...")
 
@@ -21,9 +43,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow credentials only when using specific origin URLs (not wildcards)
-allow_creds = True if APP_URL != "*" else False
+# Initialize SQLAdmin dashboard attached to PostgreSQL engine
+admin = Admin(app, engine, title="RAG Benchmark Studio")
+admin.add_view(UserAdmin)
 
+allow_creds = True if APP_URL != "*" else False
 target_url = APP_URL or "http://localhost:5173"
 
 app.add_middleware(
@@ -34,9 +58,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(benchmark_router)
+app.include_router(api_v1_router, prefix="/api/v1")
 
 
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "RAG Benchmark API"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )

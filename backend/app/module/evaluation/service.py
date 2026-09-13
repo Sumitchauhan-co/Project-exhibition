@@ -1,25 +1,24 @@
 import math
-import os
-import sys
+import re
 import time
-from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+from ragas.run_config import RunConfig
 
-from ..config import (
+from app.common.utils.config import (
     APP_ENV,
+    DATABASE_URL,
     DEV_EMBED_MODEL_1,
+    DEV_EMBED_MODEL_2,
     DEV_LLM_MODEL_1,
+    DEV_LLM_MODEL_2,
     DEV_VECTOR_DB,
     OLLAMA_BASE_URL,
     OPENAI_API_KEY,
-    PINECONE_API_KEY,
-    PINECONE_INDEX_NAME,
     PROD_EMBED_MODEL_1,
+    PROD_EMBED_MODEL_2,
     PROD_LLM_MODEL_1,
+    PROD_LLM_MODEL_2,
     PROD_VECTOR_DB,
 )
 
@@ -37,6 +36,11 @@ DEFAULT_TEST_DATASET = [
         "ground_truth": "The MIT-BIH Arrhythmia Database was used.",
     },
 ]
+
+
+def sanitize_namespace(name: str) -> str:
+    """Sanitizes model and strategy strings into safe collection identifiers for vector stores."""
+    return re.sub(r"[^a-zA-Z0-9_-]", "-", name)
 
 
 class RAGBenchmarkEngine:
@@ -73,43 +77,61 @@ class RAGBenchmarkEngine:
             )
         raise ValueError(f"Unknown strategy: {strategy}")
 
-    def get_llm(self, model_name: str):
+    def get_llm(self, model_name: str | None = None):
         """Factory for LLMs: ChatOllama (Dev) vs ChatOpenAI (Prod)"""
         if APP_ENV == "prod":
             from langchain_openai import ChatOpenAI
 
-            return ChatOpenAI(model=model_name, api_key=OPENAI_API_KEY)
+            target_model = model_name or PROD_LLM_MODEL_1
+            return ChatOpenAI(
+                model=target_model,
+                api_key=OPENAI_API_KEY,
+                temperature=0.0,
+            )
         else:
             from langchain_ollama import ChatOllama
 
-            return ChatOllama(model=model_name, base_url=OLLAMA_BASE_URL)
+            target_model = model_name or DEV_LLM_MODEL_1
+            return ChatOllama(
+                model=target_model,
+                base_url=OLLAMA_BASE_URL,
+                temperature=0.0,
+            )
 
-    def get_embedding_model(self, model_name: str):
+    def get_embedding_model(self, model_name: str | None = None):
         """Factory for Embeddings: Ollama Embeddings (Dev) vs OpenAI Embeddings (Prod)"""
         if APP_ENV == "prod":
             from langchain_openai import OpenAIEmbeddings
 
-            return OpenAIEmbeddings(model=model_name, api_key=OPENAI_API_KEY)
+            target_model = model_name or PROD_EMBED_MODEL_1
+            return OpenAIEmbeddings(model=target_model, api_key=OPENAI_API_KEY)
         else:
             from langchain_ollama import OllamaEmbeddings
 
-            return OllamaEmbeddings(model=model_name, base_url=OLLAMA_BASE_URL)
+            target_model = model_name or DEV_EMBED_MODEL_1
+            return OllamaEmbeddings(model=target_model, base_url=OLLAMA_BASE_URL)
 
-    def build_vector_store(self, chunks: List, embedding_fn, namespace_id: str):
-        """Factory for Vector Database: In-memory ChromaDB (Dev) vs Pinecone (Prod)"""
+    def build_vector_store(self, chunks: List, embedding_fn, collection_name: str):
+        """Factory for Vector Database: In-memory Chroma (Dev) vs PGVector (Prod)"""
         if APP_ENV == "prod":
-            from langchain_pinecone import PineconeVectorStore
-            from pinecone import Pinecone
+            if PROD_VECTOR_DB == "pg-vector":
+                from langchain_postgres.vectorstores import PGVector
 
-            pc = Pinecone(api_key=PINECONE_API_KEY)
-            index = pc.Index(PINECONE_INDEX_NAME)
+                if not DATABASE_URL:
+                    raise ValueError(
+                        "DATABASE_URL must be configured for PGVector in production."
+                    )
 
-            return PineconeVectorStore.from_documents(
-                documents=chunks,
-                embedding=embedding_fn,
-                index_name=PINECONE_INDEX_NAME,
-                namespace=namespace_id,
-            )
+                return PGVector.from_documents(
+                    embedding=embedding_fn,
+                    documents=chunks,
+                    collection_name=collection_name,
+                    connection=DATABASE_URL,
+                )
+            else:
+                from langchain_community.vectorstores import Chroma
+
+                return Chroma.from_documents(chunks, embedding_fn)
         else:
             from langchain_community.vectorstores import Chroma
 
@@ -122,8 +144,11 @@ class RAGBenchmarkEngine:
         chunks = self.get_chunker(chunk_strat).split_documents(self.raw_docs)
         embed_fn = self.get_embedding_model(embed_model)
 
-        namespace = f"{chunk_strat}-{embed_model.replace(':', '-')}"
-        vector_store = self.build_vector_store(chunks, embed_fn, namespace)
+        safe_strat = sanitize_namespace(chunk_strat)
+        safe_embed = sanitize_namespace(embed_model)
+        collection_id = f"{safe_strat}-{safe_embed}"
+
+        vector_store = self.build_vector_store(chunks, embed_fn, collection_id)
         return vector_store.as_retriever(search_kwargs={"k": 3}), embed_fn
 
     def evaluate_retriever_with_llm(
@@ -136,7 +161,7 @@ class RAGBenchmarkEngine:
         vector_db: str | None = None,
         test_dataset: List[Dict] | None = None,
     ) -> Dict[str, Any]:
-        """Reuses an existing retriever to run LLM context retrieval and RAGAS evaluation."""
+        """Reuses an existing retriever to run LLM answer generation and RAGAS evaluation."""
         from datasets import Dataset
         from ragas import evaluate
         from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -168,18 +193,39 @@ class RAGBenchmarkEngine:
         ]
 
         answers, contexts = [], []
+        llm_instance = self.get_llm(llm_model)
 
+        # 1. Retrieve Contexts and Generate Answers via Selected LLM
         for q in questions:
             retrieved_docs = retriever.invoke(q)
             if retrieved_docs:
-                contexts.append([doc.page_content for doc in retrieved_docs])
-                answers.append(retrieved_docs[0].page_content[:200])
+                retrieved_texts = [doc.page_content for doc in retrieved_docs]
+                contexts.append(retrieved_texts)
+
+                context_str = "\n\n".join(retrieved_texts)
+                prompt = (
+                    f"Context:\n{context_str}\n\n"
+                    f"Question: {q}\n\n"
+                    "Answer the question concisely based strictly on the context above."
+                )
+
+                try:
+                    response = llm_instance.invoke(prompt)
+                    gen_text = (
+                        response.content
+                        if hasattr(response, "content")
+                        else str(response)
+                    )
+                    answers.append(gen_text)
+                except Exception as gen_err:
+                    answers.append(f"Generation error: {str(gen_err)}")
             else:
                 contexts.append(["No context found"])
                 answers.append("No context found")
 
         latency = round((time.time() - start_time) * 1000, 2)
 
+        # 2. Build Dataset for RAGAS Evaluation
         dataset = Dataset.from_dict(
             {
                 "question": questions,
@@ -190,16 +236,31 @@ class RAGBenchmarkEngine:
             }
         )
 
-        evaluator_llm = LangchainLLMWrapper(self.get_llm(llm_model))
+        evaluator_llm = LangchainLLMWrapper(llm_instance)
         evaluator_embeddings = LangchainEmbeddingsWrapper(embed_fn)
 
-        ragas_result = evaluate(
-            dataset=dataset,
-            metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
-            llm=evaluator_llm,
-            embeddings=evaluator_embeddings,
+        run_config = RunConfig(
+            max_workers=1 if APP_ENV == "dev" else 4,
+            timeout=300,
+            max_retries=5,
+            max_wait=60,
         )
 
+        # 3. Compute Metrics
+        ragas_result = evaluate(
+            dataset=dataset,
+            metrics=[
+                faithfulness,
+                answer_relevancy,
+                context_precision,
+                context_recall,
+            ],
+            llm=evaluator_llm,
+            embeddings=evaluator_embeddings,
+            run_config=run_config,
+        )
+
+        # 4. Safely Extract Metric Means
         raw_scores: Dict[str, float] = {}
 
         if hasattr(ragas_result, "to_pandas"):
@@ -247,50 +308,3 @@ class RAGBenchmarkEngine:
             "latency_ms": latency,
             "metrics": cleaned_metrics,
         }
-
-    def run_single_config(
-        self,
-        chunk_strat: str,
-        embed_model: str,
-        llm_model: str,
-        vector_db: str | None = None,
-        test_dataset: List[Dict] | None = None,
-    ) -> Dict[str, Any]:
-        """Backwards-compatible helper for single runs."""
-        retriever, embed_fn = self.get_retriever_for_config(chunk_strat, embed_model)
-        return self.evaluate_retriever_with_llm(
-            retriever=retriever,
-            embed_fn=embed_fn,
-            chunk_strat=chunk_strat,
-            embed_model=embed_model,
-            llm_model=llm_model,
-            vector_db=vector_db,
-            test_dataset=test_dataset,
-        )
-
-
-def evaluate_pdf_with_ragas(
-    pdf_path: str,
-    chunk_strat: str = "recursive",
-    embed_model: str | None = None,
-    llm_model: str | None = None,
-    vector_db: str | None = None,
-    test_dataset: List[Dict] | None = None,
-) -> Dict[str, Any]:
-    if embed_model is None:
-        embed_model = PROD_EMBED_MODEL_1 if APP_ENV == "prod" else DEV_EMBED_MODEL_1
-
-    if llm_model is None:
-        llm_model = PROD_LLM_MODEL_1 if APP_ENV == "prod" else DEV_LLM_MODEL_1
-
-    if vector_db is None:
-        vector_db = PROD_VECTOR_DB if APP_ENV == "prod" else DEV_VECTOR_DB
-
-    engine = RAGBenchmarkEngine(pdf_path)
-    return engine.run_single_config(
-        chunk_strat=chunk_strat,
-        embed_model=embed_model,
-        llm_model=llm_model,
-        vector_db=vector_db,
-        test_dataset=test_dataset,
-    )

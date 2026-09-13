@@ -8,6 +8,23 @@ APP_ENV = os.getenv("APP_ENV", "dev").lower()
 APP_URL = os.getenv("APP_URL", "http://localhost:5173")
 
 
+### JWT Authentication Settings
+JWT_ACCESS_SECRET_TOKEN = os.getenv("JWT_ACCESS_SECRET_TOKEN")
+JWT_REFRESH_SECRET_TOKEN = os.getenv("JWT_REFRESH_SECRET_TOKEN")
+
+JWT_ACCESS_TOKEN_EXPIRY = os.getenv("JWT_ACCESS_TOKEN_EXPIRY")
+JWT_REFRESH_TOKEN_EXPIRY = os.getenv("JWT_REFRESH_TOKEN_EXPIRY")
+
+# Default signing algorithm
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+
+
+### Razorpay Payment Gateway Settings
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET")
+
+
 ### Local Dev Settings (Ollama + FAISS / Chroma)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -21,9 +38,7 @@ DEV_EMBED_MODEL_1 = os.getenv("DEV_EMBED_MODEL_1", "qwen3-embedding:latest")
 DEV_EMBED_MODEL_2 = os.getenv("DEV_EMBED_MODEL_2", "")
 
 # Vector DB (Dev)
-DEV_VECTOR_DB = os.getenv(
-    "DEV_VECTOR_DB", "chroma"
-)  # Options: faiss, chroma, qdrant, etc.
+DEV_VECTOR_DB = os.getenv("DEV_VECTOR_DB", "chroma")
 
 
 ### Production Settings (OpenAI + Pinecone / Chroma)
@@ -39,9 +54,6 @@ PROD_EMBED_MODEL_1 = os.getenv("PROD_EMBED_MODEL_1", "text-embedding-3-small")
 PROD_EMBED_MODEL_2 = os.getenv("PROD_EMBED_MODEL_2", "text-embedding-3-large")
 
 # Vector DB (Prod)
-PROD_VECTOR_DB = os.getenv(
-    "PROD_VECTOR_DB", "pinecone"
-)  # Options: pinecone, chroma, pgvector, qdrant
+PROD_VECTOR_DB = os.getenv("PROD_VECTOR_DB", "pg-vector")
 
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
-PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "rag-production-index")
+DATABASE_URL = os.getenv("DATABASE_URL")

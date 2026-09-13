@@ -1,7 +1,6 @@
 import React from 'react';
 import { RefreshCw, Upload } from 'lucide-react';
 import { Button } from '../ui/button';
-import { ModeToggle } from '../mode-toggle';
 
 interface DashboardHeaderProps {
 	loading?: boolean;
@@ -20,9 +19,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 				<h1 className="text-2xl font-bold tracking-tight text-foreground">
 					RAG Benchmarking Dashboard
 				</h1>
-				<span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-					3x1x1 Matrix
-				</span>
 			</div>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Empirical accuracy and latency evaluation on technical handbooks
@@ -30,8 +26,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 		</div>
 
 		<div className="flex items-center gap-3">
-			<ModeToggle />
-
 			{onUploadNew && (
 				<Button
 					variant="outline"

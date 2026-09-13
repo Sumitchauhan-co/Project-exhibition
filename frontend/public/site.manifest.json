@@ -1,0 +1,28 @@
+{
+	"name": "RAG Matrix Evaluation Suite",
+	"short_name": "RAG Matrix",
+	"description": "Automated evaluation matrix for Retrieval-Augmented Generation systems.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#4f46e5",
+	"theme_color": "#4f46e5",
+	"orientation": "portrait-primary",
+	"icons": [
+		{
+			"src": "/icon-192x192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "/icon-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		},
+		{
+			"src": "/icon-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	]
+}

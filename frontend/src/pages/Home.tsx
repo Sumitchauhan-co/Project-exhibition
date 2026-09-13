@@ -2,15 +2,30 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import api from '../api/axios';
 import { HomeHeader } from '../components/home/HomeHeader';
-import { SelectedFileCard } from '../components/home/SelectedFileCard';
 import { Dropzone } from '../components/home/Dropzone';
+import { ChunkingStrategySelector } from '../components/home/ChunkingStrategySelector';
 import { Button } from '../components/ui/button';
+import { SelectedFileCard } from '../components/home/SelectedFileCard';
+import { useEvaluatePdf } from '../hooks/useEvaluatePdf';
+import { useProcessingStore } from '../store/processing-store';
 
 export default function Home() {
 	const [file, setFile] = useState<File | null>(null);
-	const [isProcessing, setIsProcessing] = useState(false);
+
+	// Model and Strategy Selections
+	const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
+		'token',
+	]);
+	const [selectedLlms, setSelectedLlms] = useState<string[]>([
+		'gemma4:31b-cloud',
+	]);
+	const [selectedEmbeddings, setSelectedEmbeddings] = useState<string[]>([
+		'qwen3-embedding:latest',
+	]);
+
+	const { isProcessing, setProcessing, clearProcessing } = useProcessingStore();
+	const { mutateAsync: evaluatePdf, isPending: isEvaluating } = useEvaluatePdf();
 	const [error, setError] = useState<string | null>(null);
 
 	const navigate = useNavigate();
@@ -31,25 +46,35 @@ export default function Home() {
 	const handleStartChunking = async () => {
 		if (!file || isProcessing) return;
 
-		setIsProcessing(true);
-		setError(null);
-		console.info('[Home] Starting PDF evaluation:', file.name);
+		if (
+			selectedStrategies.length === 0 ||
+			selectedLlms.length === 0 ||
+			selectedEmbeddings.length === 0
+		) {
+			setError(
+				'Please select at least one strategy, one LLM, and one embedding model.',
+			);
+			return;
+		}
 
-		const formData = new FormData();
-		formData.append('file', file);
+		setProcessing({
+			isProcessing: true,
+			fileName: file.name,
+			fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+			totalRuns,
+			startedAt: Date.now(),
+		});
+		setError(null);
 
 		try {
-			const response = await api.post('/api/v1/evaluate-pdf', formData);
+			const matrixResults = await evaluatePdf({
+				file,
+				selectedStrategies,
+				selectedLlms,
+				selectedEmbeddings,
+			});
 
-			// Extract array safely regardless of response shape
-			const rawPayload = response.data;
-			const matrixResults = Array.isArray(rawPayload)
-				? rawPayload
-				: (rawPayload.results ?? rawPayload);
-
-			console.info('[Home] PDF evaluation completed:', response.status);
-
-			// Navigate directly to dashboard
+			clearProcessing();
 			navigate('/dashboard', {
 				state: {
 					results: matrixResults,
@@ -58,25 +83,44 @@ export default function Home() {
 				},
 			});
 		} catch (err: unknown) {
-			if (axios.isAxiosError(err)) {
-				console.error('[Home] PDF evaluation failed:', {
-					status: err.response?.status,
-					detail: err.response?.data?.detail,
-					message: err.message,
+			const detail = axios.isAxiosError(err)
+				? err.response?.data?.detail
+				: null;
+			const message =
+				typeof detail === 'string'
+					? detail
+					: detail && typeof detail === 'object' && 'message' in detail
+						? String(detail.message)
+						: 'Failed to evaluate PDF. Please try again.';
+
+			if (
+				detail &&
+				typeof detail === 'object' &&
+				'redirect_to' in detail &&
+				typeof detail.redirect_to === 'string'
+			) {
+				clearProcessing();
+				navigate(String(detail.redirect_to), {
+					state: { creditGuard: detail },
 				});
-			} else {
-				console.error('[Home] Unexpected submission error:', err);
+				return;
 			}
 
-			setError(
-				(axios.isAxiosError(err) && err.response?.data?.detail) ||
-					'Failed to evaluate PDF. Please try again.',
-			);
-
-			// Reset loading state only on failure
-			setIsProcessing(false);
+			clearProcessing();
+			setError(message);
 		}
 	};
+
+	const totalRuns =
+		selectedStrategies.length * selectedLlms.length * selectedEmbeddings.length;
+
+	const isFormInvalid =
+		!file ||
+		isProcessing ||
+		isEvaluating ||
+		selectedStrategies.length === 0 ||
+		selectedLlms.length === 0 ||
+		selectedEmbeddings.length === 0;
 
 	return (
 		<div className="max-w-3xl mx-auto my-8 space-y-6 text-center">
@@ -93,21 +137,31 @@ export default function Home() {
 				/>
 			)}
 
+			{/* Modular Strategy & Model Selector */}
+			<ChunkingStrategySelector
+				selectedStrategies={selectedStrategies}
+				onChangeStrategies={setSelectedStrategies}
+				selectedLlms={selectedLlms}
+				onChangeLlms={setSelectedLlms}
+				selectedEmbeddings={selectedEmbeddings}
+				onChangeEmbeddings={setSelectedEmbeddings}
+			/>
+
 			<Button
 				onClick={handleStartChunking}
-				disabled={!file || isProcessing}
+				disabled={isFormInvalid}
 				className="w-full py-6 text-base font-semibold"
 				size="lg"
 			>
-				{isProcessing ? (
+				{isProcessing || isEvaluating ? (
 					<>
 						<Loader2 className="w-5 h-5 mr-2 animate-spin" />
-						Evaluating RAG Matrix...
+						Evaluating RAG Matrix ({totalRuns} combinations)...
 					</>
 				) : (
 					<>
 						<CheckCircle2 className="w-5 h-5 mr-2" />
-						Run Benchmark Analysis
+						Run Benchmark Analysis ({totalRuns} total runs)
 					</>
 				)}
 			</Button>

@@ -4,10 +4,15 @@
 		"target": "ES2022",
 		"lib": ["ES2022", "DOM"],
 		"module": "esnext",
-		"types": ["vite/client"],
+		"types": ["vite/client", "node"],
 		"allowArbitraryExtensions": true,
 		"skipLibCheck": true,
 
+		/* Path Aliases */
+		"paths": {
+      "@/*": ["./src/*"]
+    },
+		
 		/* Bundler mode */
 		"moduleResolution": "bundler",
 		"allowImportingTsExtensions": true,

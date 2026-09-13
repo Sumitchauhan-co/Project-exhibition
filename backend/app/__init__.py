@@ -1,1 +1,1 @@
-# app/__init__.py
+"""Application package for the backend service."""

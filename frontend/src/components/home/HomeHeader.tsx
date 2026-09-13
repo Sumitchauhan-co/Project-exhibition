@@ -1,5 +1,4 @@
 import React from 'react';
-import { ModeToggle } from '../mode-toggle';
 
 export const HomeHeader: React.FC = () => (
 	<header className="flex items-center justify-between border-b border-border pb-6">
@@ -12,6 +11,5 @@ export const HomeHeader: React.FC = () => (
 				retrieval accuracy.
 			</p>
 		</div>
-		<ModeToggle />
 	</header>
 );
