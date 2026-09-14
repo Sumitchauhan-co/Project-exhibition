@@ -1,8 +1,15 @@
 import api from '../api/axios';
 import type {
+	CreditBalanceResponse,
 	PaymentOrderResponse,
 	PaymentPackageOption,
 } from '../types/payment';
+
+interface RazorpaySuccessResponse {
+	razorpay_payment_id: string;
+	razorpay_order_id: string;
+	razorpay_signature: string;
+}
 
 declare global {
 	interface Window {
@@ -36,13 +43,33 @@ export const PAYMENT_PACKAGES: PaymentPackageOption[] = [
 	},
 ];
 
+export const MINIMUM_CUSTOM_CREDITS = 100;
+export const MAXIMUM_CUSTOM_CREDITS = 100000;
+
+export const fetchCreditBalance = async (): Promise<CreditBalanceResponse> => {
+	const response = await api.get<CreditBalanceResponse>('/billing/balance');
+	return response.data;
+};
+
 export const createBillingOrder = async (payload: {
 	package_id?: string;
 	credits?: number;
 }): Promise<PaymentOrderResponse> => {
+	if (payload.credits !== undefined) {
+		if (payload.credits < MINIMUM_CUSTOM_CREDITS) {
+			throw new Error(`Minimum purchase is ${MINIMUM_CUSTOM_CREDITS} credits.`);
+		}
+		if (payload.credits > MAXIMUM_CUSTOM_CREDITS) {
+			throw new Error(
+				`Maximum purchase limit is ${MAXIMUM_CUSTOM_CREDITS} credits.`,
+			);
+		}
+	}
+
 	const endpoint = payload.credits
 		? '/billing/create-custom-order'
 		: '/billing/create-order';
+
 	const body = payload.credits
 		? { credits: payload.credits }
 		: { package_id: payload.package_id };
@@ -60,6 +87,19 @@ export const loadRazorpayScript = async (): Promise<boolean> => {
 		return true;
 	}
 
+	const existingScript = document.querySelector<HTMLScriptElement>(
+		'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+	);
+
+	if (existingScript) {
+		return new Promise((resolve) => {
+			existingScript.addEventListener('load', () =>
+				resolve(Boolean(window.Razorpay)),
+			);
+			existingScript.addEventListener('error', () => resolve(false));
+		});
+	}
+
 	return new Promise((resolve) => {
 		const script = document.createElement('script');
 		script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -73,23 +113,25 @@ export const loadRazorpayScript = async (): Promise<boolean> => {
 export const openPaymentCheckout = async (
 	order: PaymentOrderResponse,
 	options?: {
-		onSuccess?: () => void;
+		onSuccess?: (response: RazorpaySuccessResponse) => void;
 		onDismiss?: () => void;
 		onError?: (error: unknown) => void;
 		userName?: string;
 		userEmail?: string;
 	},
 ) => {
-	const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-	if (!razorpayKey) {
+	const razorpayKey = String(import.meta.env.VITE_RAZORPAY_KEY_ID ?? '').trim();
+	if (!razorpayKey || razorpayKey === 'undefined' || razorpayKey === 'null') {
 		throw new Error(
-			'Missing VITE_RAZORPAY_KEY_ID in your frontend environment variables.',
+			'Missing VITE_RAZORPAY_KEY_ID in environment variables. Add the Razorpay key to continue.',
 		);
 	}
 
 	const scriptReady = await loadRazorpayScript();
 	if (!scriptReady || !window.Razorpay) {
-		throw new Error('Razorpay checkout script failed to load.');
+		throw new Error(
+			'Razorpay checkout script failed to load. Please check your network connection.',
+		);
 	}
 
 	const razorpay = new window.Razorpay({
@@ -110,8 +152,8 @@ export const openPaymentCheckout = async (
 		theme: {
 			color: '#4f46e5',
 		},
-		handler: () => {
-			options?.onSuccess?.();
+		handler: (response: RazorpaySuccessResponse) => {
+			options?.onSuccess?.(response);
 		},
 		modal: {
 			ondismiss: () => {

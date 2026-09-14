@@ -351,6 +351,7 @@ class BillingService:
         webhook_secret = (
             os.getenv("RAZORPAY_WEBHOOK_SECRET") or RAZORPAY_WEBHOOK_SECRET or ""
         ).strip()
+
         if not webhook_secret:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -363,37 +364,40 @@ class BillingService:
                 detail="Missing X-Razorpay-Signature header",
             )
 
-        try:
-            expected_signature = hmac.new(
-                key=webhook_secret.encode("utf-8"),
-                msg=body_bytes,
-                digestmod=hashlib.sha256,
-            ).hexdigest()
+        expected_signature = hmac.new(
+            key=webhook_secret.encode("utf-8"),
+            msg=body_bytes,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
 
-            if not hmac.compare_digest(expected_signature, signature):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid webhook signature",
-                )
-        except HTTPException:
-            raise
-        except Exception:
+        if not hmac.compare_digest(expected_signature, signature):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Signature verification failed",
+                detail="Invalid webhook signature",
             )
 
-        payload = json.loads(body_bytes.decode("utf-8"))
+        try:
+            payload = json.loads(body_bytes.decode("utf-8"))
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JSON payload",
+            )
+
         event = payload.get("event")
 
         if event == "order.paid":
-            payment_entity = payload["payload"]["payment"]["entity"]
-            order_entity = payload["payload"]["order"]["entity"]
-            BillingService._fulfill_order(
-                session,
-                order_entity["id"],
-                payment_entity["id"],
+            payment_entity = (
+                payload.get("payload", {}).get("payment", {}).get("entity", {})
             )
+            order_entity = payload.get("payload", {}).get("order", {}).get("entity", {})
+
+            if order_entity.get("id") and payment_entity.get("id"):
+                BillingService._fulfill_order(
+                    session,
+                    order_entity["id"],
+                    payment_entity["id"],
+                )
 
         return {"status": "success"}
 
@@ -401,6 +405,7 @@ class BillingService:
     def _fulfill_order(
         session: Session, gateway_order_id: str, gateway_payment_id: str
     ) -> None:
+        # 1. Lock payment order
         stmt = (
             select(PaymentOrder)
             .where(PaymentOrder.gateway_order_id == gateway_order_id)
@@ -408,15 +413,16 @@ class BillingService:
         )
         order = session.exec(stmt).first()
 
-        if not order:
-            return
-        if order.status == PaymentStatus.SUCCESS:
+        # Idempotency check: if order does not exist or was already processed
+        if not order or order.status == PaymentStatus.SUCCESS:
             return
 
+        # 2. Update order status
         order.status = PaymentStatus.SUCCESS
         order.gateway_payment_id = gateway_payment_id
         session.add(order)
 
+        # 3. Lock user credit record
         credit_stmt = (
             select(UserCredit)
             .where(UserCredit.user_id == order.user_id)
@@ -432,15 +438,12 @@ class BillingService:
                 lifetime_spent=0,
             )
 
-        if user_credit.lifetime_earned >= order.credits_purchased:
-            # This protects against webhook replay or duplicated payment events.
-            session.commit()
-            return
-
+        # 4. Increment balance & lifetime stats
         user_credit.balance += order.credits_purchased
         user_credit.lifetime_earned += order.credits_purchased
         session.add(user_credit)
 
+        # 5. Record transaction log
         session.add(
             CreditTransaction(
                 user_id=order.user_id,
