@@ -19,12 +19,16 @@ def get_current_user(request: Request, session: Session = Depends(get_session)) 
     token: Optional[str] = request.cookies.get("access_token")
 
     if token and token.startswith("Bearer "):
-        token = token.split(" ")[1]
+        token = token.split(" ", 1)[1]
     elif not token:
         # Fallback to Authorization Header if cookie isn't present
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+            token = auth_header.split(" ", 1)[1]
+
+    if not token:
+        # Some browsers will preserve the token as a raw cookie value without the Bearer prefix.
+        token = request.cookies.get("access_token")
 
     if not token:
         raise credentials_exception

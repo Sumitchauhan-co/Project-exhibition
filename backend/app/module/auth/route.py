@@ -25,6 +25,18 @@ COOKIE_SAMESITE = "none"
 COOKIE_SECURE = True
 
 
+def set_access_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        max_age=15 * 60,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path=COOKIE_PATH,
+    )
+
+
 def set_refresh_cookie(response: Response, token: str) -> None:
     response.set_cookie(
         key="refresh_token",
@@ -69,6 +81,7 @@ def signin(
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
+    set_access_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token)
 
     return Token(
@@ -103,6 +116,7 @@ def google_auth(
     access_token = create_access_token(user.id)
     refresh_token = create_refresh_token(user.id)
 
+    set_access_cookie(response, access_token)
     set_refresh_cookie(response, refresh_token)
 
     return Token(
@@ -141,6 +155,7 @@ def refresh_token(
     new_access_token = create_access_token(user.id)
     new_refresh_token = create_refresh_token(user.id)
 
+    set_access_cookie(response, new_access_token)
     set_refresh_cookie(response, new_refresh_token)
 
     return Token(
@@ -151,14 +166,15 @@ def refresh_token(
 
 @router.post("/signout")
 def signout(response: Response):
-    """Clears the refresh token cookie on signout."""
-    response.delete_cookie(
-        key="refresh_token",
-        path=COOKIE_PATH,
-        secure=COOKIE_SECURE,
-        samesite=COOKIE_SAMESITE,
-        httponly=True,
-    )
+    """Clears all auth cookies on signout."""
+    for key in ("access_token", "refresh_token"):
+        response.delete_cookie(
+            key=key,
+            path=COOKIE_PATH,
+            secure=COOKIE_SECURE,
+            samesite=COOKIE_SAMESITE,
+            httponly=True,
+        )
     return {"message": "Successfully signed out"}
 
 
