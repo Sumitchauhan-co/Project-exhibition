@@ -9,8 +9,15 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/project_exhibition"
 )
 
-# echo=True prints raw SQL queries in your console for debugging during development
-engine = create_engine(DATABASE_URL, echo=True)
+# Added pool settings to prevent SSL connection drops on cloud databases like Render
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    pool_pre_ping=True,  # Checks connection validity before executing queries
+    pool_recycle=300,  # Recycles connections every 5 minutes (300s)
+    pool_size=10,  # Maintained pool connections
+    max_overflow=20,  # Extra burst connections allowed
+)
 
 
 def init_db() -> None:
