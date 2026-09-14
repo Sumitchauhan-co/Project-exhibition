@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
-  <!-- Rounded White Background -->
-  <rect x="1" y="1" width="46" height="46" rx="12" fill="#FFFFFF" stroke="#0ea5e9" stroke-width="2"/>
+  <!-- Rounded White Background (rx Increased from 12 to 18) -->
+  <rect x="1" y="1" width="46" height="46" rx="18" fill="#FFFFFF" stroke="#0ea5e9" stroke-width="2"/>
   
   <!-- Icon Scaled & Centered with ~25% Padding -->
   <g transform="translate(12, 12) scale(1)" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
