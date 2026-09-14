@@ -38,9 +38,9 @@ class ConfigService:
                 description="Splits text based on semantic distance using embeddings.",
             ),
             OptionItem(
-                id="agentic",
-                label="Agentic Chunking",
-                description="Uses an LLM agent to analyze and partition content logically.",
+                id="token",
+                label="Token Based Chunking",
+                description="Splits text directly based on raw token count and boundaries.",
             ),
         ]
 

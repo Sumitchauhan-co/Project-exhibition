@@ -130,7 +130,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenCookieSettings }) => {
 							to="/"
 							className="inline-flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100 hover:opacity-90 transition-opacity"
 						>
-							<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-500/30">
+							<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500 text-white shadow-sm shadow-indigo-500/30">
 								<Galaxy className="h-5 w-5" />
 							</div>
 							<span className="tracking-tight">RAG Matrix</span>

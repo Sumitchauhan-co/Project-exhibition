@@ -10,6 +10,7 @@ interface ChunkingStrategySelectorProps {
 	onChangeLlms: (llms: string[]) => void;
 	selectedEmbeddings: string[];
 	onChangeEmbeddings: (embeddings: string[]) => void;
+	disabled?: boolean;
 }
 
 export const ChunkingStrategySelector: React.FC<
@@ -21,6 +22,7 @@ export const ChunkingStrategySelector: React.FC<
 	onChangeLlms,
 	selectedEmbeddings,
 	onChangeEmbeddings,
+	disabled = false,
 }) => {
 	const [config, setConfig] = useState<SystemOptionsConfig | null>(null);
 	const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -63,7 +65,7 @@ export const ChunkingStrategySelector: React.FC<
 	if (error || !config) {
 		return (
 			<div className="p-4 border border-destructive/30 bg-destructive/10 rounded-xl text-destructive text-sm flex items-center space-x-2">
-				<ShieldAlert className="w-5 h-5 flex-shrink-0" />
+				<ShieldAlert className="w-5 h-5 shrink-0" />
 				<span>Failed to load configuration options from server. {error}</span>
 			</div>
 		);
@@ -74,6 +76,7 @@ export const ChunkingStrategySelector: React.FC<
 		selectedList: string[],
 		onChange: (items: string[]) => void,
 	) => {
+		if (disabled) return;
 		if (selectedList.includes(id)) {
 			onChange(selectedList.filter((item) => item !== id));
 		} else {
@@ -86,6 +89,7 @@ export const ChunkingStrategySelector: React.FC<
 		selectedList: string[],
 		onChange: (items: string[]) => void,
 	) => {
+		if (disabled) return;
 		if (selectedList.length === allItems.length) {
 			onChange([]);
 		} else {
@@ -104,6 +108,7 @@ export const ChunkingStrategySelector: React.FC<
 				title="Chunking Strategies"
 				options={config.strategies}
 				selectedIds={selectedStrategies}
+				disabled={disabled}
 				onToggleItem={(id) =>
 					toggleItem(id, selectedStrategies, onChangeStrategies)
 				}
@@ -122,6 +127,7 @@ export const ChunkingStrategySelector: React.FC<
 				title="LLM Models"
 				options={config.llms}
 				selectedIds={selectedLlms}
+				disabled={disabled}
 				onToggleItem={(id) => toggleItem(id, selectedLlms, onChangeLlms)}
 				onToggleSelectAll={() =>
 					toggleSelectAll(config.llms, selectedLlms, onChangeLlms)
@@ -134,6 +140,7 @@ export const ChunkingStrategySelector: React.FC<
 				title="Embedding Models"
 				options={config.embeddings}
 				selectedIds={selectedEmbeddings}
+				disabled={disabled}
 				onToggleItem={(id) =>
 					toggleItem(id, selectedEmbeddings, onChangeEmbeddings)
 				}
@@ -179,6 +186,7 @@ interface OptionGroupProps {
 	selectedIds: string[];
 	onToggleItem: (id: string) => void;
 	onToggleSelectAll: () => void;
+	disabled?: boolean;
 }
 
 const OptionGroup: React.FC<OptionGroupProps> = ({
@@ -188,6 +196,7 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
 	selectedIds,
 	onToggleItem,
 	onToggleSelectAll,
+	disabled = false,
 }) => {
 	const isAllSelected =
 		options.length > 0 && selectedIds.length === options.length;
@@ -204,7 +213,8 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
 				<button
 					type="button"
 					onClick={onToggleSelectAll}
-					className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+					disabled={disabled}
+					className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{isAllSelected ? 'Deselect All' : 'Select All'}
 				</button>
@@ -216,19 +226,23 @@ const OptionGroup: React.FC<OptionGroupProps> = ({
 					return (
 						<div
 							key={opt.id}
-							onClick={() => onToggleItem(opt.id)}
-							className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-all ${
-								isSelected
-									? 'border-primary bg-primary/5 shadow-xs'
-									: 'border-border bg-background hover:border-muted-foreground/30'
+							onClick={() => !disabled && onToggleItem(opt.id)}
+							className={`flex items-start space-x-3 p-3 rounded-lg border transition-all ${
+								disabled
+									? 'cursor-not-allowed opacity-60 border-border bg-background'
+									: 'cursor-pointer ' +
+										(isSelected
+											? 'border-primary bg-primary/5 shadow-xs'
+											: 'border-border bg-background hover:border-muted-foreground/30')
 							}`}
 						>
 							<input
 								type="checkbox"
 								checked={isSelected}
+								disabled={disabled}
 								onClick={(e) => e.stopPropagation()}
 								onChange={() => onToggleItem(opt.id)}
-								className="mt-0.5 w-4 h-4 rounded border-border accent-primary cursor-pointer"
+								className="mt-0.5 w-4 h-4 rounded border-border accent-primary cursor-pointer disabled:cursor-not-allowed"
 							/>
 							<div>
 								<p className="text-sm font-medium text-foreground leading-none">

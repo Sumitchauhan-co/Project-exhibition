@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
         sys.path.insert(0, str(project_root))
 
 from app.common.db.database import engine, init_db
-from app.common.utils import APP_ENV, APP_URL
+from app.common.utils import APP_ENV, APP_URL, APP_URLS
 from app.common.utils.api_router import api_v1_router
 
 # Import SQLModel entities for Admin visual inspection
@@ -47,15 +47,20 @@ app = FastAPI(
 admin = Admin(app, engine, title="RAG Benchmark Studio")
 admin.add_view(UserAdmin)
 
-allow_creds = True if APP_URL != "*" else False
-target_url = APP_URL or "http://localhost:5173"
+allow_creds = APP_URL != "*"
+allowed_origins = [origin for origin in APP_URLS if origin and origin != "*"]
+
+if not allowed_origins:
+    allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[target_url],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\\.ngrok(-free)?\\.dev|https://.*\\.ngrok\\.io|http://localhost:\\d+|http://127.0.0.1:\\d+",
     allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.include_router(api_v1_router, prefix="/api/v1")

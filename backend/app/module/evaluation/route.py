@@ -129,7 +129,7 @@ async def evaluate_uploaded_pdf(
             )
         selected_strategies = parsed_strategies
     else:
-        selected_strategies = ["recursive", "fixed", "token", "semantic"]
+        selected_strategies = ["recursive"]
 
     # 2. Resolve LLMs (Fall back to env config if not supplied in form)
     parsed_llms = parse_string_list(llm_models)
@@ -137,9 +137,13 @@ async def evaluate_uploaded_pdf(
         selected_llms = parsed_llms
     else:
         if APP_ENV == "prod":
-            selected_llms = list(dict.fromkeys([PROD_LLM_MODEL_1, PROD_LLM_MODEL_2]))
+            selected_llms = [
+                item for item in [PROD_LLM_MODEL_1, PROD_LLM_MODEL_2] if item
+            ][:1]
         else:
-            selected_llms = list(dict.fromkeys([DEV_LLM_MODEL_1, DEV_LLM_MODEL_2]))
+            selected_llms = [
+                item for item in [DEV_LLM_MODEL_1, DEV_LLM_MODEL_2] if item
+            ][:1]
 
     # 3. Resolve Embedding Models (Fall back to env config if not supplied in form)
     parsed_embeddings = parse_string_list(embedding_models)
@@ -147,13 +151,13 @@ async def evaluate_uploaded_pdf(
         selected_embeddings = parsed_embeddings
     else:
         if APP_ENV == "prod":
-            selected_embeddings = list(
-                dict.fromkeys([PROD_EMBED_MODEL_1, PROD_EMBED_MODEL_2])
-            )
+            selected_embeddings = [
+                item for item in [PROD_EMBED_MODEL_1, PROD_EMBED_MODEL_2] if item
+            ][:1]
         else:
-            selected_embeddings = list(
-                dict.fromkeys([DEV_EMBED_MODEL_1, DEV_EMBED_MODEL_2])
-            )
+            selected_embeddings = [
+                item for item in [DEV_EMBED_MODEL_1, DEV_EMBED_MODEL_2] if item
+            ][:1]
 
     active_vector_db = PROD_VECTOR_DB if APP_ENV == "prod" else DEV_VECTOR_DB
     user_id = current_user.id

@@ -32,7 +32,10 @@ const normalizePaymentDetail = (detail: unknown): Record<string, unknown> => {
 	};
 };
 
-const getSuccessMessage = (config: { method?: string; url?: string }): string => {
+const getSuccessMessage = (config: {
+	method?: string;
+	url?: string;
+}): string => {
 	const method = (config.method ?? 'GET').toUpperCase();
 	const url = config.url ?? '';
 
@@ -67,7 +70,10 @@ const getSuccessMessage = (config: { method?: string; url?: string }): string =>
 	return 'Data refreshed successfully.';
 };
 
-const shouldNotifySuccess = (config: { method?: string; url?: string }): boolean => {
+const shouldNotifySuccess = (config: {
+	method?: string;
+	url?: string;
+}): boolean => {
 	const method = (config.method ?? 'GET').toUpperCase();
 	const url = config.url ?? '';
 
@@ -77,7 +83,11 @@ const shouldNotifySuccess = (config: { method?: string; url?: string }): boolean
 	if (url.includes('/auth/me')) {
 		return false;
 	}
-	if (method === 'GET' && !url.includes('/dashboard') && !url.includes('/contact')) {
+	if (
+		method === 'GET' &&
+		!url.includes('/dashboard') &&
+		!url.includes('/contact')
+	) {
 		return false;
 	}
 
@@ -130,7 +140,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
 	(response) => {
 		const config = response.config as { method?: string; url?: string };
-		if (response.status >= 200 && response.status < 300 && shouldNotifySuccess(config)) {
+		if (
+			response.status >= 200 &&
+			response.status < 300 &&
+			shouldNotifySuccess(config)
+		) {
 			toast.add({
 				title: 'Success',
 				description: getSuccessMessage(config),
@@ -211,10 +225,11 @@ api.interceptors.response.use(
 		}
 
 		if (error.response) {
-			
 			const detail =
-			error.response?.data?.detail ?? 'Something went wrong. Please try again.';
-			const message = detail.message || 'Something went wrong. Please try again.';
+				error.response?.data?.detail ??
+				'Something went wrong. Please try again.';
+			const message =
+				detail.message || 'Something went wrong. Please try again.';
 
 			toast.add({
 				title: 'Request failed',

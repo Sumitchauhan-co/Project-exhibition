@@ -8,6 +8,23 @@ APP_ENV = os.getenv("APP_ENV", "dev").lower()
 APP_URL = os.getenv("APP_URL", "http://localhost:5173")
 
 
+def _split_env_list(raw_value: str | None) -> list[str]:
+    if not raw_value:
+        return []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+APP_URLS = _split_env_list(os.getenv("CORS_ORIGINS")) or [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    str(APP_URL).strip(),
+]
+
+APP_URLS = list(dict.fromkeys(APP_URLS))
+
+
 ### JWT Authentication Settings
 JWT_ACCESS_SECRET_TOKEN = os.getenv("JWT_ACCESS_SECRET_TOKEN")
 JWT_REFRESH_SECRET_TOKEN = os.getenv("JWT_REFRESH_SECRET_TOKEN")

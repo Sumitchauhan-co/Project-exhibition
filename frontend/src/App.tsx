@@ -12,10 +12,11 @@ import {
 import { ThemeProvider } from './components/theme-provider';
 import { AppRoutes } from './routes/AppRoute';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
-import { LoadingSpinner } from './components/LoadingSpinner';
+// import { LoadingSpinner } from './components/LoadingSpinner';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { Toaster } from './components/ui/toast';
 import { useAuthSession } from './hooks/useAuthSession';
+import { InitialLoader } from './components/InitialLoader';
 
 ChartJS.register(
 	CategoryScale,
@@ -37,9 +38,10 @@ export default function App() {
 
 	if (isPending) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-slate-950">
-				<LoadingSpinner label="Checking your session..." />
-			</div>
+			// <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-slate-950">
+			// 	<LoadingSpinner label="Checking your session..." />
+			// </div>
+			<InitialLoader />
 		);
 	}
 

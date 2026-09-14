@@ -103,7 +103,7 @@ export const Navbar: React.FC = () => {
 						className="group flex items-center gap-2 text-base font-bold text-zinc-900 transition-colors hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-zinc-100 dark:hover:text-indigo-400 sm:text-lg"
 						aria-label="RAG Benchmark Home"
 					>
-						<Galaxy className="h-5 w-5 text-indigo-600 transition-transform duration-300 ease-out group-hover:rotate-180 dark:text-indigo-400 sm:h-6 sm:w-6" />
+						<Galaxy className="h-5 w-5 text-indigo-500 transition-transform duration-300 ease-out group-hover:rotate-180 dark:text-indigo-400 sm:h-6 sm:w-6" />
 						<span className="tracking-tight">RAG Matrix</span>
 					</button>
 

@@ -50,6 +50,7 @@ class RAGBenchmarkEngine:
         self.pdf_path = pdf_path
         self.loader = PyPDFLoader(pdf_path)
         self.raw_docs = self.loader.load()
+        self._retriever_cache: Dict[Tuple[str, str], Tuple[Any, Any]] = {}
 
         if not self.raw_docs:
             raise ValueError(
@@ -140,7 +141,11 @@ class RAGBenchmarkEngine:
     def get_retriever_for_config(
         self, chunk_strat: str, embed_model: str
     ) -> Tuple[Any, Any]:
-        """Builds and indexes the vector store ONCE per (chunker, embed_model) pair."""
+        """Builds and indexes the vector store once per (chunker, embed_model) pair."""
+        cache_key = (chunk_strat, embed_model)
+        if cache_key in self._retriever_cache:
+            return self._retriever_cache[cache_key]
+
         chunks = self.get_chunker(chunk_strat).split_documents(self.raw_docs)
         embed_fn = self.get_embedding_model(embed_model)
 
@@ -149,7 +154,9 @@ class RAGBenchmarkEngine:
         collection_id = f"{safe_strat}-{safe_embed}"
 
         vector_store = self.build_vector_store(chunks, embed_fn, collection_id)
-        return vector_store.as_retriever(search_kwargs={"k": 3}), embed_fn
+        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
+        self._retriever_cache[cache_key] = (retriever, embed_fn)
+        return retriever, embed_fn
 
     def evaluate_retriever_with_llm(
         self,

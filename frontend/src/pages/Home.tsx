@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -9,6 +9,15 @@ import { Button } from '../components/ui/button';
 import { SelectedFileCard } from '../components/home/SelectedFileCard';
 import { useEvaluatePdf } from '../hooks/useEvaluatePdf';
 import { useProcessingStore } from '../store/processing-store';
+import { toast } from '../components/ui/toast'; // adjust path to your toast component
+
+const DEFAULT_EVALUATION_STEPS = [
+	'Preparing document',
+	'Chunking and indexing',
+	'Building retrievers',
+	'Running benchmark checks',
+	'Finalizing results',
+];
 
 export default function Home() {
 	const [file, setFile] = useState<File | null>(null);
@@ -25,13 +34,42 @@ export default function Home() {
 	]);
 
 	const { isProcessing, setProcessing, clearProcessing } = useProcessingStore();
-	const { mutateAsync: evaluatePdf, isPending: isEvaluating } = useEvaluatePdf();
+	const {
+		mutateAsync: evaluatePdf,
+		isPending: isEvaluating,
+		cancel,
+	} = useEvaluatePdf();
 	const [error, setError] = useState<string | null>(null);
 
 	const navigate = useNavigate();
+	const totalRuns =
+		selectedStrategies.length * selectedLlms.length * selectedEmbeddings.length;
+	const estimatedSeconds = useMemo(() => {
+		const baseSeconds = 18;
+		const perRunSeconds = 8;
+		const modelPenalty = Math.max(0, selectedLlms.length - 1) * 6;
+		const embeddingPenalty = Math.max(0, selectedEmbeddings.length - 1) * 6;
+		const strategyPenalty = Math.max(0, selectedStrategies.length - 1) * 10;
+		return Math.min(
+			240,
+			Math.max(
+				20,
+				baseSeconds +
+					totalRuns * perRunSeconds +
+					modelPenalty +
+					embeddingPenalty +
+					strategyPenalty,
+			),
+		);
+	}, [
+		selectedEmbeddings.length,
+		selectedLlms.length,
+		selectedStrategies.length,
+		totalRuns,
+	]);
 
 	const handleFileSelect = (selectedFile: File | null) => {
-		if (!selectedFile) return;
+		if (isProcessing || isEvaluating || !selectedFile) return;
 
 		if (selectedFile.type !== 'application/pdf') {
 			setError('Only PDF files are supported.');
@@ -44,7 +82,7 @@ export default function Home() {
 	};
 
 	const handleStartChunking = async () => {
-		if (!file || isProcessing) return;
+		if (!file || isProcessing || isEvaluating) return;
 
 		if (
 			selectedStrategies.length === 0 ||
@@ -57,14 +95,38 @@ export default function Home() {
 			return;
 		}
 
+		const fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
 		setProcessing({
 			isProcessing: true,
 			fileName: file.name,
-			fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+			fileSize,
 			totalRuns,
 			startedAt: Date.now(),
+			estimatedSeconds: estimatedSeconds,
+			statusSteps: DEFAULT_EVALUATION_STEPS,
+			cancelHandler: cancel,
 		});
 		setError(null);
+
+		// Trigger toast with direct action button to redirect to /dashboard
+		toast.add({
+			title: 'Benchmark Analysis Started',
+			description: (
+				<div className="flex flex-col gap-2">
+					<p>
+						Processing {totalRuns} run(s) for {file.name}...
+					</p>
+					<Button
+						variant="default"
+						size="sm"
+						className="w-fit bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+						onClick={() => navigate('/dashboard')}
+					>
+						Go to Dashboard
+					</Button>
+				</div>
+			),
+		});
 
 		try {
 			const matrixResults = await evaluatePdf({
@@ -76,13 +138,23 @@ export default function Home() {
 
 			clearProcessing();
 			navigate('/dashboard', {
+				replace: true,
 				state: {
 					results: matrixResults,
 					fileName: file.name,
-					fileSize: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+					fileSize,
 				},
 			});
 		} catch (err: unknown) {
+			const isCancelled =
+				axios.isAxiosError(err) &&
+				(err.code === 'ERR_CANCELED' || err.message === 'canceled');
+			if (isCancelled) {
+				clearProcessing();
+				navigate('/', { replace: true });
+				return;
+			}
+
 			const detail = axios.isAxiosError(err)
 				? err.response?.data?.detail
 				: null;
@@ -111,9 +183,6 @@ export default function Home() {
 		}
 	};
 
-	const totalRuns =
-		selectedStrategies.length * selectedLlms.length * selectedEmbeddings.length;
-
 	const isFormInvalid =
 		!file ||
 		isProcessing ||
@@ -126,14 +195,20 @@ export default function Home() {
 		<div className="mx-auto my-6 w-full max-w-4xl space-y-6 px-4 text-center sm:my-8 sm:px-6">
 			<HomeHeader />
 
-			<Dropzone onFileSelect={handleFileSelect} />
+			<Dropzone
+				onFileSelect={handleFileSelect}
+				disabled={isProcessing || isEvaluating}
+			/>
 
 			{error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
 			{file && (
 				<SelectedFileCard
 					file={file}
-					onRemove={() => setFile(null)}
+					onRemove={() => {
+						if (!isProcessing && !isEvaluating) setFile(null);
+					}}
+					disabled={isProcessing || isEvaluating}
 				/>
 			)}
 
@@ -145,6 +220,7 @@ export default function Home() {
 				onChangeLlms={setSelectedLlms}
 				selectedEmbeddings={selectedEmbeddings}
 				onChangeEmbeddings={setSelectedEmbeddings}
+				disabled={isProcessing || isEvaluating}
 			/>
 
 			<Button
