@@ -1,4 +1,4 @@
-import type { PipelineResult } from '@/types/benchmark';
+import type { PipelineResult } from '@/types/evaluation';
 
 /**
  * Calculates the top-performing configuration based on metric scores:
@@ -26,10 +26,17 @@ export const getTopConfig = (data: PipelineResult[]): PipelineResult | null => {
 			return scoreB - scoreA;
 		}
 
-		if ((b.metrics?.faithfulness ?? 0) !== (a.metrics?.faithfulness ?? 0)) {
-			return (b.metrics?.faithfulness ?? 0) - (a.metrics?.faithfulness ?? 0);
+		const faithA = a.metrics?.faithfulness ?? 0;
+		const faithB = b.metrics?.faithfulness ?? 0;
+
+		if (faithB !== faithA) {
+			return faithB - faithA;
 		}
 
-		return (a.latency_ms ?? 0) - (b.latency_ms ?? 0);
+		// Default missing latency to Infinity so valid latencies take priority
+		const latencyA = a.latency_ms ?? Infinity;
+		const latencyB = b.latency_ms ?? Infinity;
+
+		return latencyA - latencyB;
 	})[0];
 };

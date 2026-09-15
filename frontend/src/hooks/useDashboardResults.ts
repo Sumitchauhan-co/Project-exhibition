@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import api from '@/api/axios';
-import type { PipelineResult } from '@/types/benchmark';
+import type { PipelineResult } from '@/types/evaluation';
 
 interface DashboardResultsOptions {
 	enabled: boolean;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { type PipelineResult } from '../../types/benchmark';
+import { type PipelineResult } from '../../types/evaluation';
 
 interface MatrixTableProps {
 	data: PipelineResult[];

@@ -1,3 +1,4 @@
+import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,6 +19,8 @@ from app.common.utils.api_router import api_v1_router
 
 # Import SQLModel entities for Admin visual inspection
 from app.module.auth.model import User
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
 # Define Admin views for SQLModel tables

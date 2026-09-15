@@ -20,10 +20,10 @@ class ConfigService:
         Retrieves chunking strategies, LLMs, and embedding models dynamically
         based on the active application environment (dev vs prod).
         """
-        # 1. Static Strategies
+        # 1. Static Strategies (Updated to include Agentic Chunking and fix strategy IDs)
         strategies = [
             OptionItem(
-                id="fixed-size",
+                id="fixed",
                 label="Fixed Size Chunking",
                 description="Splits documents into uniform token sizes with specified overlap.",
             ),
@@ -41,6 +41,11 @@ class ConfigService:
                 id="token",
                 label="Token Based Chunking",
                 description="Splits text directly based on raw token count and boundaries.",
+            ),
+            OptionItem(
+                id="agentic",
+                label="Agentic Chunking",
+                description="Uses an LLM agent to dynamically evaluate topic shifts and split semantic boundaries.",
             ),
         ]
 

@@ -6,6 +6,7 @@ import {
 	Galaxy,
 	Home,
 	LayoutDashboard,
+	Loader2,
 	Menu,
 	X,
 } from 'lucide-react';
@@ -19,7 +20,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatMemberSinceDate } from './utils/date';
+import { formatMemberSinceDate } from '../utils/date';
 import api from '../api/axios';
 
 const navItems = [
@@ -34,38 +35,25 @@ export const Navbar: React.FC = () => {
 	const [creditBalance, setCreditBalance] = useState<number | null>(null);
 	const [isOpen, setIsOpen] = useState(false);
 
-	useEffect(() => {
+	// Single fetch on mount or authentication change
+	const fetchBalance = useCallback(async () => {
 		if (!isAuthenticated) {
 			setCreditBalance(null);
 			return;
 		}
 
-		let isActive = true;
-
-		const fetchBalance = async () => {
-			try {
-				const response = await api.get<{ balance: number }>('/billing/balance');
-				if (isActive) {
-					setCreditBalance(response.data.balance);
-				}
-			} catch (error) {
-				console.error('Failed to load credit balance', error);
-				if (isActive) {
-					setCreditBalance(null);
-				}
-			}
-		};
-
-		void fetchBalance();
-		const intervalId = window.setInterval(() => {
-			void fetchBalance();
-		}, 15000);
-
-		return () => {
-			isActive = false;
-			window.clearInterval(intervalId);
-		};
+		try {
+			const response = await api.get<{ balance: number }>('/billing/balance');
+			setCreditBalance(response.data.balance);
+		} catch (error) {
+			console.error('Failed to load credit balance', error);
+			setCreditBalance(null);
+		}
 	}, [isAuthenticated]);
+
+	useEffect(() => {
+		void fetchBalance();
+	}, [fetchBalance]);
 
 	const handleHomeClick = useCallback(() => {
 		navigate('/');
@@ -82,10 +70,13 @@ export const Navbar: React.FC = () => {
 		setIsOpen(false);
 	}, [navigate]);
 
-	const handleNavClick = (path: string) => {
-		navigate(path);
-		setIsOpen(false);
-	};
+	const handleNavClick = useCallback(
+		(path: string) => {
+			navigate(path);
+			setIsOpen(false);
+		},
+		[navigate],
+	);
 
 	const userInitial = (user?.full_name || user?.email || 'U')
 		.charAt(0)
@@ -107,7 +98,7 @@ export const Navbar: React.FC = () => {
 						<span className="tracking-tight">RAG Matrix</span>
 					</button>
 
-					{/* Desktop Navigation Links (Underline Hover Effect) */}
+					{/* Desktop Navigation Links */}
 					<div className="hidden items-center gap-2 rounded-full border border-zinc-200/60 bg-zinc-100/40 px-3 py-1.5 dark:border-zinc-800/60 dark:bg-zinc-900/40 md:flex">
 						{navItems.map((item) => {
 							const Icon = item.icon;
@@ -119,7 +110,6 @@ export const Navbar: React.FC = () => {
 								>
 									<Icon className="h-4 w-4" />
 									<span>{item.name}</span>
-									{/* Animated Blue Underline */}
 									<span className="absolute bottom-0 left-1/2 h-0.5 w-0 -translate-x-1/2 bg-indigo-600 transition-all duration-300 ease-out group-hover:w-4/5 dark:bg-indigo-400" />
 								</button>
 							);
@@ -138,7 +128,11 @@ export const Navbar: React.FC = () => {
 								}`}
 							>
 								<Coins className="h-3.5 w-3.5" />
-								{creditBalance ?? 0} credits
+								{creditBalance !== null ? (
+									<>{creditBalance} credits</>
+								) : (
+									<Loader2 className="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" />
+								)}
 							</button>
 						)}
 
@@ -168,7 +162,7 @@ export const Navbar: React.FC = () => {
 												{userInitial}
 											</AvatarFallback>
 										</Avatar>
-										<div className="flex flex-col min-w-0">
+										<div className="flex min-w-0 flex-col">
 											<p className="truncate text-sm font-semibold leading-tight text-zinc-900 dark:text-zinc-100">
 												{user?.full_name || 'User Profile'}
 											</p>
@@ -205,6 +199,7 @@ export const Navbar: React.FC = () => {
 						<button
 							onClick={() => setIsOpen(!isOpen)}
 							aria-label="Toggle Menu"
+							aria-expanded={isOpen}
 							className="cursor-pointer rounded-full p-2 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
 						>
 							{isOpen ? (
@@ -218,7 +213,7 @@ export const Navbar: React.FC = () => {
 
 				{/* Mobile Dropdown Menu */}
 				{isOpen && (
-					<div className="animate-in fade-in slide-in-from-top-2 absolute right-4 left-4 z-40 mt-2 flex flex-col gap-3 rounded-3xl border border-zinc-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95 md:hidden">
+					<div className="animate-in fade-in slide-in-from-top-2 absolute left-4 right-4 z-40 mt-2 flex flex-col gap-3 rounded-3xl border border-zinc-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-900/95 md:hidden">
 						<div className="flex flex-col gap-2">
 							{navItems.map((item) => {
 								const Icon = item.icon;
@@ -241,32 +236,47 @@ export const Navbar: React.FC = () => {
 
 						{isAuthenticated ? (
 							<div className="flex flex-col gap-3">
-								<div className="flex items-center justify-between px-2">
-									<div className="flex items-center gap-2.5">
-										<Avatar className="h-8 w-8 bg-indigo-100 dark:bg-indigo-900/40">
-											<AvatarFallback className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-												{userInitial}
-											</AvatarFallback>
-										</Avatar>
-										<span className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
-											{user?.full_name || user?.email}
-										</span>
+								{/* Updated Mobile User Header & Meta Info */}
+								<div className="flex flex-col gap-2 rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-3 dark:border-zinc-800/60 dark:bg-zinc-800/30">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2.5 min-w-0">
+											<Avatar className="h-9 w-9 shrink-0 bg-indigo-100 dark:bg-indigo-900/40">
+												<AvatarFallback className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+													{userInitial}
+												</AvatarFallback>
+											</Avatar>
+											<div className="flex min-w-0 flex-col">
+												<span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+													{user?.full_name || 'User Profile'}
+												</span>
+												{user?.email && (
+													<span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+														{user.email}
+													</span>
+												)}
+											</div>
+										</div>
+
+										<button
+											onClick={handlePaymentClick}
+											className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+												(creditBalance ?? 0) <= 50
+													? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
+													: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300'
+											}`}
+										>
+											<Coins className="h-3 w-3" />
+											{creditBalance ?? 0}
+										</button>
 									</div>
 
-									<button
-										onClick={handlePaymentClick}
-										className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
-											(creditBalance ?? 0) <= 50
-												? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
-												: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300'
-										}`}
-									>
-										<Coins className="h-3 w-3" />
-										{creditBalance ?? 0}
-									</button>
+									{createdAtFormatted && (
+										<div className="mt-1 border-t border-zinc-200/60 pt-2 text-center text-[11px] text-zinc-400 dark:border-zinc-800/60 dark:text-zinc-500">
+											Member since {createdAtFormatted}
+										</div>
+									)}
 								</div>
 
-								{/* Mobile Red Accent Sign-Out Wrapper */}
 								<div className="w-full rounded-2xl border border-red-200/80 bg-red-50/70 text-red-600 transition-all active:scale-[0.98] dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 [&_button]:w-full [&_button]:py-2.5 [&_button]:text-red-600 [&_button]:dark:text-red-400">
 									<SignOutButton />
 								</div>

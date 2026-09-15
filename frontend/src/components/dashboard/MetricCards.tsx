@@ -1,6 +1,6 @@
 import React from 'react';
 import { Activity, Award, Cpu, Database } from 'lucide-react';
-import { type PipelineResult } from '../../types/benchmark';
+import { type PipelineResult } from '../../types/evaluation';
 import { MetricSkeleton } from '../Skeleton';
 
 interface MetricCardsProps {

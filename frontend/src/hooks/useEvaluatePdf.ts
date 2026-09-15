@@ -2,6 +2,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import api from '@/api/axios';
+import type { EvaluationPreset } from '@/types/evaluation';
+
+interface EvaluatePdfParams {
+	file: File;
+	selectedStrategies: string[];
+	selectedLlms: string[];
+	selectedEmbeddings: string[];
+	evaluationMode: EvaluationPreset;
+}
 
 export function useEvaluatePdf() {
 	const queryClient = useQueryClient();
@@ -18,17 +27,14 @@ export function useEvaluatePdf() {
 			selectedStrategies,
 			selectedLlms,
 			selectedEmbeddings,
-		}: {
-			file: File;
-			selectedStrategies: string[];
-			selectedLlms: string[];
-			selectedEmbeddings: string[];
-		}) => {
+			evaluationMode,
+		}: EvaluatePdfParams) => {
 			const formData = new FormData();
 			formData.append('file', file);
 			formData.append('strategies', JSON.stringify(selectedStrategies));
 			formData.append('llm_models', JSON.stringify(selectedLlms));
 			formData.append('embedding_models', JSON.stringify(selectedEmbeddings));
+			formData.append('evaluation_mode', evaluationMode);
 
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
@@ -36,6 +42,7 @@ export function useEvaluatePdf() {
 			const response = await api.post('/evaluation/evaluate-pdf', formData, {
 				signal: controller.signal,
 			});
+
 			const rawPayload = response.data;
 			return Array.isArray(rawPayload)
 				? rawPayload
@@ -44,6 +51,9 @@ export function useEvaluatePdf() {
 		onSuccess: () => {
 			abortControllerRef.current = null;
 			void queryClient.invalidateQueries({ queryKey: ['evaluation'] });
+		},
+		onError: () => {
+			abortControllerRef.current = null;
 		},
 		onSettled: () => {
 			abortControllerRef.current = null;

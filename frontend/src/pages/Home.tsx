@@ -5,11 +5,13 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { HomeHeader } from '../components/home/HomeHeader';
 import { Dropzone } from '../components/home/Dropzone';
 import { ChunkingStrategySelector } from '../components/home/ChunkingStrategySelector';
+import { EvaluationModeSelector } from '../components/home/EvaluationModeSelector';
 import { Button } from '../components/ui/button';
 import { SelectedFileCard } from '../components/home/SelectedFileCard';
 import { useEvaluatePdf } from '../hooks/useEvaluatePdf';
 import { useProcessingStore } from '../store/processing-store';
-import { toast } from '../components/ui/toast'; // adjust path to your toast component
+import { toast } from '../components/ui/toast';
+import type { EvaluationPreset } from '@/types/evaluation';
 
 const DEFAULT_EVALUATION_STEPS = [
 	'Preparing document',
@@ -21,16 +23,22 @@ const DEFAULT_EVALUATION_STEPS = [
 
 export default function Home() {
 	const [file, setFile] = useState<File | null>(null);
+	const [evaluationMode, setEvaluationMode] =
+		useState<EvaluationPreset>('fast');
+
+	const isProd = process.env.NODE_ENV === 'prod';
 
 	// Model and Strategy Selections
 	const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
-		'token',
+		'agentic',
 	]);
+
 	const [selectedLlms, setSelectedLlms] = useState<string[]>([
-		'gemma4:31b-cloud',
+		isProd ? 'gpt-4o-mini' : 'gemma4:31b-cloud',
 	]);
+
 	const [selectedEmbeddings, setSelectedEmbeddings] = useState<string[]>([
-		'qwen3-embedding:latest',
+		isProd ? 'text-embedding-3-small' : 'qwen3-embedding:latest',
 	]);
 
 	const { isProcessing, setProcessing, clearProcessing } = useProcessingStore();
@@ -44,21 +52,28 @@ export default function Home() {
 	const navigate = useNavigate();
 	const totalRuns =
 		selectedStrategies.length * selectedLlms.length * selectedEmbeddings.length;
+
 	const estimatedSeconds = useMemo(() => {
+		const modeMultiplier =
+			evaluationMode === 'fast' ? 1 : evaluationMode === 'vector' ? 2.5 : 5;
+
 		const baseSeconds = 18;
-		const perRunSeconds = 8;
+		const perRunSeconds = 8 * modeMultiplier;
 		const modelPenalty = Math.max(0, selectedLlms.length - 1) * 6;
 		const embeddingPenalty = Math.max(0, selectedEmbeddings.length - 1) * 6;
 		const strategyPenalty = Math.max(0, selectedStrategies.length - 1) * 10;
+
 		return Math.min(
-			240,
+			600,
 			Math.max(
 				20,
-				baseSeconds +
-					totalRuns * perRunSeconds +
-					modelPenalty +
-					embeddingPenalty +
-					strategyPenalty,
+				Math.round(
+					baseSeconds +
+						totalRuns * perRunSeconds +
+						modelPenalty +
+						embeddingPenalty +
+						strategyPenalty,
+				),
 			),
 		);
 	}, [
@@ -66,6 +81,7 @@ export default function Home() {
 		selectedLlms.length,
 		selectedStrategies.length,
 		totalRuns,
+		evaluationMode,
 	]);
 
 	const handleFileSelect = (selectedFile: File | null) => {
@@ -108,9 +124,8 @@ export default function Home() {
 		});
 		setError(null);
 
-		// Trigger toast with direct action button to redirect to /dashboard
 		toast.add({
-			title: 'Benchmark Analysis Started',
+			title: `Benchmark Analysis Started (${evaluationMode.toUpperCase()} Mode)`,
 			description: (
 				<div className="flex flex-col gap-2">
 					<p>
@@ -134,6 +149,7 @@ export default function Home() {
 				selectedStrategies,
 				selectedLlms,
 				selectedEmbeddings,
+				evaluationMode,
 			});
 
 			clearProcessing();
@@ -211,6 +227,13 @@ export default function Home() {
 					disabled={isProcessing || isEvaluating}
 				/>
 			)}
+
+			{/* Modular Evaluation Mode Selector */}
+			<EvaluationModeSelector
+				value={evaluationMode}
+				onChange={setEvaluationMode}
+				disabled={isProcessing || isEvaluating}
+			/>
 
 			{/* Modular Strategy & Model Selector */}
 			<ChunkingStrategySelector

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bar } from 'react-chartjs-2';
-import { type PipelineResult } from '../../types/benchmark';
+import { type PipelineResult } from '../../types/evaluation';
 import { useTheme } from '../theme-context';
 
 interface BenchmarkChartProps {

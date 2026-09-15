@@ -76,3 +76,31 @@ PROD_VECTOR_DB = os.getenv("PROD_VECTOR_DB", "pg-vector")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID")
+
+
+### Evaluation Engine Settings
+
+EVALUATION_METRIC_MODE = os.getenv("EVALUATION_METRIC_MODE", "fast").lower()
+EVALUATION_ANSWER_MODE = os.getenv(
+    "EVALUATION_ANSWER_MODE",
+    "extractive" if EVALUATION_METRIC_MODE == "fast" else "llm",
+).lower()
+EVALUATION_RETRIEVER_MODE = os.getenv(
+    "EVALUATION_RETRIEVER_MODE",
+    "fast" if EVALUATION_METRIC_MODE == "fast" else "vector",
+).lower()
+
+EVALUATION_CONTEXT_CHARS_PER_DOC = int(
+    os.getenv("EVALUATION_CONTEXT_CHARS_PER_DOC", "1400")
+)
+EVALUATION_ANSWER_WORKERS = int(os.getenv("EVALUATION_ANSWER_WORKERS", "3"))
+EVALUATION_RAGAS_WORKERS = int(os.getenv("EVALUATION_RAGAS_WORKERS", "4"))
+EVALUATION_RAGAS_TIMEOUT = int(os.getenv("EVALUATION_RAGAS_TIMEOUT", "120"))
+EVALUATION_RAGAS_RETRIES = int(os.getenv("EVALUATION_RAGAS_RETRIES", "1"))
+EVALUATION_FAST_INDEX = os.getenv("EVALUATION_FAST_INDEX", "1").lower() not in {
+    "0",
+    "false",
+    "no",
+}
+EVALUATION_MAX_INDEX_CHUNKS = int(os.getenv("EVALUATION_MAX_INDEX_CHUNKS", "36"))
+EVALUATION_MIN_INDEX_CHUNKS = int(os.getenv("EVALUATION_MIN_INDEX_CHUNKS", "12"))

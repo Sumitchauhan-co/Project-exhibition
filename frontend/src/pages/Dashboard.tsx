@@ -7,14 +7,14 @@ import {
 	Trash2,
 	UploadCloud,
 } from 'lucide-react';
-import { type PipelineResult } from '../types/benchmark';
+import { type PipelineResult } from '../types/evaluation';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { MetricCards } from '../components/dashboard/MetricCards';
 import { ViewSwitcher } from '../components/dashboard/ViewSwitcher';
 import { BenchmarkChart } from '../components/dashboard/BenchmarkChart';
 import { MatrixTable } from '../components/dashboard/MatrixTable';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { getTopConfig } from '@/components/utils/dashboard';
+import { getTopConfig } from '@/utils/dashboard';
 import { useProcessingStore } from '../store/processing-store';
 import { useDashboardResults } from '@/hooks/useDashboardResults';
 
