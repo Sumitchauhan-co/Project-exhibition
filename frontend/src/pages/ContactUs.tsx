@@ -118,10 +118,10 @@ export default function ContactUs() {
 							Reach out directly for billing & support inquiries:
 						</p>
 						<a
-							href="mailto:support@ragmatrix.dev"
+							href="mailto:sumit.chauhan.code@gmail.com"
 							className="block text-xs font-medium text-zinc-900 dark:text-zinc-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors pt-1"
 						>
-							support@ragmatrix.dev
+							sumit.chauhan.code@gmail.com
 						</a>
 					</div>
 

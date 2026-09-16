@@ -127,10 +127,10 @@ export default function PrivacyPolicy() {
 							any time through your dashboard settings. For privacy inquiries or
 							requests, contact us at{' '}
 							<a
-								href="mailto:support@ragmatrix.dev"
+								href="mailto:sumit.chauhan.code@gmail.com"
 								className="text-indigo-600 dark:text-indigo-400 underline font-medium"
 							>
-								support@ragmatrix.dev
+								sumit.chauhan.code@gmail.com
 							</a>
 							.
 						</p>
