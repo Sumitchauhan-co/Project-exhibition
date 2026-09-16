@@ -1,8 +1,13 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "app.vercel.project_exhibition_delta.twa",
-        "sha256_cert_fingerprints": ["5C:2A:CF:2A:6D:07:8D:F1:8F:7D:23:87:74:1D:8C:8C:51:AD:E3:D7:08:42:AC:DD:13:5C:6C:77:1E:C7:26:AF"]
-      }
-    }]
+[
+	{
+		"relation": ["delegate_permission/common.handle_all_urls"],
+		"target": {
+			"namespace": "android_app",
+			"package_name": "app.vercel.project_exhibition_delta.twa",
+			"sha256_cert_fingerprints": [
+				"5C:2A:CF:2A:6D:07:8D:F1:8F:7D:23:87:74:1D:8C:8C:51:AD:E3:D7:08:42:AC:DD:13:5C:6C:77:1E:C7:26:AF",
+				"8F:59:6E:2F:04:0A:43:EC:7E:C2:55:28:BC:34:64:19:46:84:DA:CA:16:BF:1C:49:9B:59:D5:C3:E9:32:F9:AC"
+			]
+		}
+	}
+]
