@@ -15,10 +15,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
   <!-- Web App Manifest -->
-  <link rel="manifest" href="/site.manifest.json" />
+  <link rel="manifest" href="/manifest.json" />
 
   <!-- PWA Theme & Mobile Browser Controls -->
-  <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
 
   <!-- iOS PWA Enhancements -->
@@ -27,7 +27,7 @@
   <meta name="apple-mobile-web-app-title" content="RAG Matrix" />
 
   <!-- Windows Tile Meta -->
-  <meta name="msapplication-TileColor" content="#4f46e5" />
+  <meta name="msapplication-TileColor" content="#6366f1" />
   <meta name="msapplication-config" content="/browserconfig.xml" />
 
   <!-- Open Graph & Social Preview -->
@@ -74,6 +74,17 @@
   class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/pwabuilder-sw.js')
+          .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
 </body>
 
 </html>
