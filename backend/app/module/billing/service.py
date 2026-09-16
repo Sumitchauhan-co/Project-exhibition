@@ -187,18 +187,25 @@ class BillingService:
         context: str,
     ) -> UserCredit:
         user_credit = BillingService.get_or_create_user_credit(session, user_id)
-        user_credit.balance += required_credits
-        user_credit.lifetime_spent = max(
-            0, user_credit.lifetime_spent - required_credits
-        )
+
+        # Preventing balance from exceeding (lifetime_earned - lifetime_spent)
+        refundable_amount = min(required_credits, user_credit.lifetime_spent)
+
+        if refundable_amount <= 0:
+            # Nothing was previously deducted, abort refund to prevent free credit generation
+            return user_credit
+
+        user_credit.balance += refundable_amount
+        user_credit.lifetime_spent -= refundable_amount
+
         session.add(user_credit)
         session.add(
             CreditTransaction(
                 user_id=user_id,
                 payment_order_id=None,
-                amount=required_credits,
+                amount=refundable_amount,
                 type=TransactionType.REFUND,
-                description=f"Refunded reserved credits: {context} ({required_credits} credits)",
+                description=f"Refunded reserved credits: {context} ({refundable_amount} credits)",
             )
         )
         session.commit()

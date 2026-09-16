@@ -16,6 +16,7 @@ STRATEGY_COST_MULTIPLIERS = {
     "recursive": 1.2,
     "token": 1.5,
     "semantic": 1.8,
+    "agentic": 2.0,  # Baseline multiplier floor; scaled dynamically based on document sentence count and batching bounds
 }
 
 LLM_COST_MULTIPLIERS = {

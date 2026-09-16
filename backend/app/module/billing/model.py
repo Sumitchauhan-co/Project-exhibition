@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
+from sqlalchemy import CheckConstraint
 from sqlmodel import Field, Relationship, SQLModel
 from app.module.auth.model import User
 
@@ -32,6 +33,14 @@ class UserCreditBase(SQLModel):
 
 class UserCredit(UserCreditBase, table=True):
     __tablename__ = "user_credits"
+    __table_args__ = (
+        CheckConstraint(
+            "balance <= (lifetime_earned - lifetime_spent)",
+            name="check_balance_integrity",
+        ),
+        CheckConstraint("balance >= 0", name="check_positive_balance"),
+        CheckConstraint("lifetime_spent >= 0", name="check_positive_spent"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True, index=True)
@@ -83,7 +92,9 @@ class PaymentOrder(PaymentOrderBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     gateway_order_id: str = Field(
-        unique=True, index=True, description="Razorpay order_id / Stripe session_id"
+        unique=True,
+        index=True,
+        description="Razorpay order_id / Stripe session_id",
     )
     gateway_payment_id: Optional[str] = Field(
         default=None, description="Razorpay payment_id"

@@ -14,6 +14,7 @@ from app.common.utils.config import (
     DATABASE_URL,
     DEV_EMBED_MODEL_1,
     DEV_LLM_MODEL_1,
+    DEV_VECTOR_DB,
     EVALUATION_ANSWER_MODE,
     EVALUATION_ANSWER_WORKERS,
     EVALUATION_CONTEXT_CHARS_PER_DOC,
@@ -139,38 +140,89 @@ def sanitize_namespace(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "-", name)
 
 
-class AgenticChunkSplitter:
-    """Agentic Chunking strategy using an LLM to evaluate topic shifts and split boundaries dynamically."""
+def calculate_agentic_multiplier(
+    extracted_text_chars: int,
+    batch_size: int = 5,
+    max_llm_calls: int = 40,
+    avg_sentence_chars: int = 80,
+) -> float:
+    """
+    Calculates agentic strategy multiplier based on extracted raw character length.
+    Strictly caps multiplier by max_llm_calls bound to keep billing aligned with API caps.
+    """
+    if extracted_text_chars <= 0:
+        return 2.0
 
-    def __init__(self, llm: Any, max_chunk_size: int = 1000):
+    estimated_sentences = math.ceil(extracted_text_chars / avg_sentence_chars)
+    estimated_batches = math.ceil(estimated_sentences / max(1, batch_size))
+
+    expected_calls = min(estimated_batches, max_llm_calls)
+
+    multiplier = 2.0 + (expected_calls * 0.15)
+    max_multiplier_cap = round(2.0 + (max_llm_calls * 0.15), 2)
+    return round(min(multiplier, max_multiplier_cap), 2)
+
+
+class AgenticChunkSplitter:
+    """Agentic Chunking strategy using batched LLM candidate boundary evaluations."""
+
+    def __init__(
+        self,
+        llm: Any,
+        max_chunk_size: int = 1000,
+        max_llm_calls: int = 40,
+        batch_size: int = 5,
+        user_credit_balance: int | None = None,
+        estimated_credits: int | None = None,
+    ):
         self.llm = llm
         self.max_chunk_size = max_chunk_size
+        self.max_llm_calls = max_llm_calls
+        self.batch_size = batch_size
+        self.user_credit_balance = user_credit_balance
+        self.estimated_credits = estimated_credits
 
-    def _should_split(self, current_chunk: str, next_sentence: str) -> bool:
-        """Asks the LLM if the new sentence introduces a new proposition/topic."""
-        if len(current_chunk) + len(next_sentence) > self.max_chunk_size:
-            return True
-
+    def _evaluate_batch_boundaries(self, sentences: List[str]) -> List[bool]:
+        """Evaluates multiple sentence transition points in a single LLM pass."""
+        numbered_sentences = "\n".join(
+            [f"[{i+1}] {s}" for i, s in enumerate(sentences)]
+        )
         prompt = (
-            f"You are a text chunking agent. Does the following 'Next Sentence' discuss a new topic or semantic concept "
-            f"compared to the 'Current Chunk'? Respond ONLY with 'YES' or 'NO'.\n\n"
-            f"Current Chunk:\n{current_chunk}\n\n"
-            f"Next Sentence:\n{next_sentence}"
+            f"Analyze the following ordered sentences. Identify sentence indices where a NEW semantic topic or concept begins.\n"
+            f"Respond ONLY with a comma-separated list of split indices (e.g., '2, 5'). If no split is needed, respond 'NONE'.\n\n"
+            f"{numbered_sentences}"
         )
         try:
             response = self.llm.invoke(prompt)
             content = (
                 response.content if hasattr(response, "content") else str(response)
             )
-            return "YES" in content.strip().upper()
+
+            splits = [False] * len(sentences)
+            if "NONE" not in content.upper():
+                indices = [int(i.strip()) - 1 for i in re.findall(r"\b\d+\b", content)]
+                for idx in indices:
+                    if 0 <= idx < len(sentences):
+                        splits[idx] = True
+            return splits
         except Exception as err:
-            logger.warning(
-                f"Agentic chunking decision fallback to length check due to error: {err}"
-            )
-            return len(current_chunk) > 500
+            logger.warning(f"Batch boundary evaluation failed: {err}")
+            return [False] * len(sentences)
 
     def split_documents(self, documents: List[Document]) -> List[Document]:
+        if (
+            self.user_credit_balance is not None
+            and self.estimated_credits is not None
+            and self.estimated_credits > self.user_credit_balance
+        ):
+            raise PermissionError(
+                f"Insufficient credits: Execution requires {self.estimated_credits} credits, "
+                f"but balance is {self.user_credit_balance} credits."
+            )
+
         chunked_docs = []
+        llm_call_count = 0
+
         for doc in documents:
             sentences = [
                 s.strip()
@@ -181,28 +233,69 @@ class AgenticChunkSplitter:
                 continue
 
             current_chunk = ""
-            for sentence in sentences:
-                if not current_chunk:
+            idx = 0
+
+            while idx < len(sentences):
+                sentence = sentences[idx]
+
+                if len(current_chunk) + len(sentence) > self.max_chunk_size:
+                    if current_chunk:
+                        chunked_docs.append(
+                            Document(
+                                page_content=current_chunk, metadata=dict(doc.metadata)
+                            )
+                        )
                     current_chunk = sentence
+                    idx += 1
                     continue
 
-                if self._should_split(current_chunk, sentence):
-                    chunked_docs.append(
-                        Document(
-                            page_content=current_chunk,
-                            metadata=dict(doc.metadata),
-                        )
-                    )
+                if not current_chunk:
                     current_chunk = sentence
+                    idx += 1
+                    continue
+
+                if llm_call_count < self.max_llm_calls:
+                    batch_candidates = sentences[idx : idx + self.batch_size]
+                    llm_call_count += 1
+                    split_decisions = self._evaluate_batch_boundaries(batch_candidates)
+
+                    split_occurred = False
+                    for b_idx, should_split in enumerate(split_decisions):
+                        cand_sentence = batch_candidates[b_idx]
+                        if should_split or (
+                            len(current_chunk) + len(cand_sentence)
+                            > self.max_chunk_size
+                        ):
+                            chunked_docs.append(
+                                Document(
+                                    page_content=current_chunk,
+                                    metadata=dict(doc.metadata),
+                                )
+                            )
+                            current_chunk = cand_sentence
+                            split_occurred = True
+                            idx += b_idx + 1
+                            break
+                        else:
+                            current_chunk += f" {cand_sentence}"
+
+                    if not split_occurred:
+                        idx += len(batch_candidates)
                 else:
-                    current_chunk += f" {sentence}"
+                    if len(current_chunk) + len(sentence) > 500:
+                        chunked_docs.append(
+                            Document(
+                                page_content=current_chunk, metadata=dict(doc.metadata)
+                            )
+                        )
+                        current_chunk = sentence
+                    else:
+                        current_chunk += f" {sentence}"
+                    idx += 1
 
             if current_chunk:
                 chunked_docs.append(
-                    Document(
-                        page_content=current_chunk,
-                        metadata=dict(doc.metadata),
-                    )
+                    Document(page_content=current_chunk, metadata=dict(doc.metadata))
                 )
 
         return chunked_docs
@@ -222,6 +315,7 @@ class RAGBenchmarkEngine:
         self.retriever_mode = (retriever_mode or EVALUATION_RETRIEVER_MODE).lower()
         load_start = time.perf_counter()
         self.raw_docs = self._load_pdf_with_pymupdf(pdf_bytes, filename)
+        self.extracted_text_chars = sum(len(doc.page_content) for doc in self.raw_docs)
         self._retriever_cache: Dict[Tuple[str, str], Tuple[Any, Any]] = {}
 
         if not self.raw_docs:
@@ -232,6 +326,7 @@ class RAGBenchmarkEngine:
             filename=filename,
             pages=len(self.raw_docs),
             bytes=len(pdf_bytes),
+            chars=self.extracted_text_chars,
             metric_mode=self.metric_mode,
             answer_mode=self.answer_mode,
             retriever_mode=self.retriever_mode,
@@ -256,7 +351,13 @@ class RAGBenchmarkEngine:
         doc.close()
         return docs
 
-    def get_chunker(self, strategy: str, llm_model: str | None = None):
+    def get_chunker(
+        self,
+        strategy: str,
+        llm_model: str | None = None,
+        user_credit_balance: int | None = None,
+        estimated_credits: int | None = None,
+    ):
         from langchain_text_splitters import (
             CharacterTextSplitter,
             RecursiveCharacterTextSplitter,
@@ -276,7 +377,12 @@ class RAGBenchmarkEngine:
                 chunk_size=300, chunk_overlap=20, separators=["\n\n", ". ", " "]
             )
         elif strategy == "agentic":
-            return AgenticChunkSplitter(llm=self.get_llm(llm_model))
+            return AgenticChunkSplitter(
+                llm=self.get_llm(llm_model),
+                max_llm_calls=40,
+                user_credit_balance=user_credit_balance,
+                estimated_credits=estimated_credits,
+            )
         raise ValueError(f"Unknown strategy: {strategy}")
 
     def get_llm(self, model_name: str | None = None):
@@ -396,7 +502,12 @@ class RAGBenchmarkEngine:
         return selected_chunks
 
     def get_retriever_for_config(
-        self, chunk_strat: str, embed_model: str, llm_model: str | None = None
+        self,
+        chunk_strat: str,
+        embed_model: str,
+        llm_model: str | None = None,
+        user_credit_balance: int | None = None,
+        estimated_credits: int | None = None,
     ) -> Tuple[Any, Any]:
         """Builds and indexes the vector store once per (chunker, embed_model) pair."""
         stage_start = time.perf_counter()
@@ -411,9 +522,13 @@ class RAGBenchmarkEngine:
             return self._retriever_cache[cache_key]
 
         split_start = time.perf_counter()
-        chunks = self.get_chunker(chunk_strat, llm_model=llm_model).split_documents(
-            self.raw_docs
+        chunker = self.get_chunker(
+            chunk_strat,
+            llm_model=llm_model,
+            user_credit_balance=user_credit_balance,
+            estimated_credits=estimated_credits,
         )
+        chunks = chunker.split_documents(self.raw_docs)
         split_ms = elapsed_ms(split_start)
         chunks = self._prefilter_chunks_for_evaluation(chunks)
 

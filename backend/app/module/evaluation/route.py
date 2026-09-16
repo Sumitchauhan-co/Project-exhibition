@@ -133,6 +133,8 @@ def _run_matrix_evaluations(
     selected_llms: List[str],
     active_vector_db: str,
     evaluation_modes: dict,
+    user_credit_balance: Optional[int] = None,
+    estimated_credits: Optional[int] = None,
 ) -> List[dict]:
     """Blocking worker function executed in background thread."""
     matrix_start = time.perf_counter()
@@ -151,11 +153,18 @@ def _run_matrix_evaluations(
                 if strat == "agentic":
                     primary_llm = selected_llms[0] if selected_llms else None
                     retriever, embed_fn = engine.get_retriever_for_config(
-                        strat, embed_model, llm_model=primary_llm
+                        strat,
+                        embed_model,
+                        llm_model=primary_llm,
+                        user_credit_balance=user_credit_balance,
+                        estimated_credits=estimated_credits,
                     )
                 else:
                     retriever, embed_fn = engine.get_retriever_for_config(
-                        strat, embed_model
+                        strat,
+                        embed_model,
+                        user_credit_balance=user_credit_balance,
+                        estimated_credits=estimated_credits,
                     )
             except Exception as embed_err:
                 for llm in selected_llms:
@@ -293,11 +302,11 @@ async def evaluate_uploaded_pdf(
         if APP_ENV == "prod":
             selected_llms = [
                 item for item in [PROD_LLM_MODEL_1, PROD_LLM_MODEL_2] if item
-            ][:1]
+            ]
         else:
             selected_llms = [
                 item for item in [DEV_LLM_MODEL_1, DEV_LLM_MODEL_2] if item
-            ][:1]
+            ]
 
     parsed_embeddings = parse_string_list(embedding_models)
     if parsed_embeddings:
@@ -306,15 +315,16 @@ async def evaluate_uploaded_pdf(
         if APP_ENV == "prod":
             selected_embeddings = [
                 item for item in [PROD_EMBED_MODEL_1, PROD_EMBED_MODEL_2] if item
-            ][:1]
+            ]
         else:
             selected_embeddings = [
                 item for item in [DEV_EMBED_MODEL_1, DEV_EMBED_MODEL_2] if item
-            ][:1]
+            ]
 
     active_vector_db = PROD_VECTOR_DB if APP_ENV == "prod" else DEV_VECTOR_DB
     evaluation_modes = resolve_evaluation_modes(evaluation_mode)
     user_id = current_user.id
+    user_credit_balance = getattr(current_user, "credit_balance", None)
 
     try:
         read_start = time.perf_counter()
@@ -366,10 +376,11 @@ async def evaluate_uploaded_pdf(
             selected_llms,
             active_vector_db,
             evaluation_modes,
+            user_credit_balance,
+            estimated_cost,
         )
         matrix_ms = elapsed_ms(matrix_start)
 
-        # DB Storage: Persist EvaluationRun and EvaluationResultItems
         eval_run = EvaluationRun(
             user_id=user_id,
             filename=file.filename,
