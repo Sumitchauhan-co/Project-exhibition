@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" fill="none">
+  <!-- White Background Card with Rounded Borders -->
+  <rect width="192" height="192" rx="40" fill="#FFFFFF"/>
+  
+  <!-- Centered Lucide Credit Card Icon in Indigo Blue (#6366f1) -->
+  <g transform="translate(48, 48) scale(4)" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect width="20" height="14" x="2" y="5" rx="2"/>
+    <line x1="2" x2="22" y1="10" y2="10"/>
+    <path d="M6 14h2"/>
+  </g>
+</svg>

@@ -3,22 +3,69 @@
 	"short_name": "RAG Matrix",
 	"description": "Automated evaluation matrix for Retrieval-Augmented Generation systems.",
 	"start_url": "/",
+	"id": "/",
+	"scope": "/",
 	"display": "standalone",
 	"background_color": "#ffffff",
 	"theme_color": "#6366f1",
-	"orientation": "portrait-primary",
+	"orientation": "portrait",
+	"lang": "en",
+	"dir": "ltr",
+	"categories": ["education"],
+	"display_override": ["standalone", "minimal-ui"],
 	"icons": [
 		{
 			"src": "/favicon-192x192.png",
 			"sizes": "192x192",
 			"type": "image/png",
-			"purpose": "any"
+			"purpose": "any maskable"
 		},
 		{
 			"src": "/favicon-512x512.png",
 			"sizes": "512x512",
 			"type": "image/png",
-			"purpose": "any"
+			"purpose": "any maskable"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "Home Page",
+			"short_name": "Home",
+			"url": "/",
+			"description": "Navigate to the main landing page",
+			"icons": [
+				{
+					"src": "/icons/shortcut-Home-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "Evaluation Dashboard",
+			"short_name": "Dashboard",
+			"url": "/dashboard",
+			"description": "Access system matrix evaluation dashboard",
+			"icons": [
+				{
+					"src": "/icons/shortcut-LayoutDashboard-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "Billing & Credits",
+			"short_name": "Billing",
+			"url": "/payment",
+			"description": "View balance and manage credits",
+			"icons": [
+				{
+					"src": "/icons/shortcut-CreditCard-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
 		}
 	]
 }
