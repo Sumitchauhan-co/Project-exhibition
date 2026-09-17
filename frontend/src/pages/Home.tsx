@@ -26,7 +26,7 @@ export default function Home() {
 	const [evaluationMode, setEvaluationMode] =
 		useState<EvaluationPreset>('fast');
 
-	const isProd = process.env.NODE_ENV === 'prod';
+	const isProd = import.meta.env.VITE_APP_ENV === 'prod';
 
 	// Model and Strategy Selections
 	const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
