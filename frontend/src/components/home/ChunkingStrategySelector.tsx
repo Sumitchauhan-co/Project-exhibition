@@ -29,6 +29,10 @@ export const ChunkingStrategySelector: React.FC<
 	const [isLoading, setIsLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 
+	console.log('strategies : ', selectedStrategies);
+	console.log('llms : ', selectedLlms);
+	console.log('embeddings : ', selectedEmbeddings);
+
 	useEffect(() => {
 		let isMounted = true;
 		setIsLoading(true);
