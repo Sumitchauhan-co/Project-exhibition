@@ -1,7 +1,7 @@
 import os
 from typing import Generator
-from sqlmodel import create_engine, Session, SQLModel
 from dotenv import load_dotenv
+from sqlmodel import SQLModel, Session, create_engine
 
 load_dotenv()
 
@@ -9,14 +9,16 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/project_exhibition"
 )
 
-# Added pool settings to prevent SSL connection drops on cloud databases like Render
+# Optimized engine setup:
+# 1. Disabled echo logging (echo=False) to stop string formatting overhead in RAM.
+# 2. Reduced pool_size and max_overflow to keep connection memory footprint lightweight.
 engine = create_engine(
     DATABASE_URL,
-    echo=True,
+    echo=False,  # Set to False to prevent high RAM consumption from query logging
     pool_pre_ping=True,  # Checks connection validity before executing queries
     pool_recycle=300,  # Recycles connections every 5 minutes (300s)
-    pool_size=10,  # Maintained pool connections
-    max_overflow=20,  # Extra burst connections allowed
+    pool_size=5,  # Reduced active pool size for free tier hosting memory management
+    max_overflow=5,  # Reduced max overflow burst connections
 )
 
 

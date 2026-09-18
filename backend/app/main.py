@@ -16,8 +16,6 @@ if __package__ in {None, ""}:
 from app.common.db.database import engine, init_db
 from app.common.utils import APP_ENV, APP_URL, APP_URLS
 from app.common.utils.api_router import api_v1_router
-
-# Import SQLModel entities for Admin visual inspection
 from app.module.auth.model import User
 
 logging.basicConfig(
@@ -25,7 +23,6 @@ logging.basicConfig(
 )
 
 
-# Define Admin views for SQLModel tables
 class UserAdmin(ModelView, model=User):
     column_list = [User.id, User.email, User.full_name, User.is_active, User.created_at]
     column_searchable_list = [User.email, User.full_name]
@@ -37,7 +34,9 @@ class UserAdmin(ModelView, model=User):
 async def lifespan(app: FastAPI):
     """Lifecycle manager for startup and shutdown tasks."""
     print(f"🚀 Application starting in [{APP_ENV.upper()}] mode...")
-    init_db()  # Initializes SQLModel database tables on application startup
+    # Skip runtime reflection/table creation in production to save RAM
+    if APP_ENV.lower() != "production":
+        init_db()
     yield
     print("🛑 Application shutting down...")
 
@@ -48,11 +47,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Initialize SQLAdmin dashboard attached to PostgreSQL engine
 admin = Admin(app, engine, title="RAG Benchmark Studio")
 admin.add_view(UserAdmin)
 
-# Explicitly ensure Vercel frontend deployments and local environments are included
 default_origins = [
     "https://project-exhibition-delta.vercel.app",
     "http://localhost:5173",
