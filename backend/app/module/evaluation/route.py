@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import logging
 import time
@@ -147,77 +148,84 @@ def _run_matrix_evaluations(
     )
     matrix_results = []
 
-    for strat in selected_strategies:
-        for embed_model in selected_embeddings:
-            try:
-                if strat == "agentic":
-                    primary_llm = selected_llms[0] if selected_llms else None
-                    retriever, embed_fn = engine.get_retriever_for_config(
-                        strat,
-                        embed_model,
-                        llm_model=primary_llm,
-                        user_credit_balance=user_credit_balance,
-                        estimated_credits=estimated_credits,
-                    )
-                else:
-                    retriever, embed_fn = engine.get_retriever_for_config(
-                        strat,
-                        embed_model,
-                        user_credit_balance=user_credit_balance,
-                        estimated_credits=estimated_credits,
-                    )
-            except Exception as embed_err:
-                for llm in selected_llms:
-                    matrix_results.append(
-                        {
-                            "environment": APP_ENV,
-                            "vector_db": active_vector_db,
-                            "chunking_strategy": strat,
-                            "embedding_model": embed_model,
-                            "llm_model": llm,
-                            "error": f"Vector indexing/chunking failed: {str(embed_err)}",
-                            "metrics": {},
-                        }
-                    )
-                continue
-
-            for llm in selected_llms:
+    try:
+        for strat in selected_strategies:
+            for embed_model in selected_embeddings:
                 try:
-                    result = engine.evaluate_retriever_with_llm(
-                        retriever=retriever,
-                        embed_fn=embed_fn,
-                        chunk_strat=strat,
-                        embed_model=embed_model,
-                        llm_model=llm,
-                        vector_db=active_vector_db,
-                        test_dataset=None,
-                    )
-                    result["evaluation_mode"] = evaluation_modes["evaluation_mode"]
-                    matrix_results.append(result)
-                except Exception as eval_err:
-                    matrix_results.append(
-                        {
-                            "environment": APP_ENV,
-                            "vector_db": active_vector_db,
-                            "chunking_strategy": strat,
-                            "embedding_model": embed_model,
-                            "llm_model": llm,
-                            "error": f"Evaluation error: {str(eval_err)}",
-                            "metrics": {},
-                        }
-                    )
+                    if strat == "agentic":
+                        primary_llm = selected_llms[0] if selected_llms else None
+                        retriever, embed_fn = engine.get_retriever_for_config(
+                            strat,
+                            embed_model,
+                            llm_model=primary_llm,
+                            user_credit_balance=user_credit_balance,
+                            estimated_credits=estimated_credits,
+                        )
+                    else:
+                        retriever, embed_fn = engine.get_retriever_for_config(
+                            strat,
+                            embed_model,
+                            user_credit_balance=user_credit_balance,
+                            estimated_credits=estimated_credits,
+                        )
+                except Exception as embed_err:
+                    for llm in selected_llms:
+                        matrix_results.append(
+                            {
+                                "environment": APP_ENV,
+                                "vector_db": active_vector_db,
+                                "chunking_strategy": strat,
+                                "embedding_model": embed_model,
+                                "llm_model": llm,
+                                "error": f"Vector indexing/chunking failed: {str(embed_err)}",
+                                "metrics": {},
+                            }
+                        )
+                    continue
 
-    emit_eval_log(
-        "matrix_complete",
-        filename=filename,
-        evaluation_mode=evaluation_modes["evaluation_mode"],
-        strategies=len(selected_strategies),
-        embeddings=len(selected_embeddings),
-        llms=len(selected_llms),
-        runs=len(matrix_results),
-        duration_ms=elapsed_ms(matrix_start),
-    )
-    return matrix_results
+                for llm in selected_llms:
+                    try:
+                        result = engine.evaluate_retriever_with_llm(
+                            retriever=retriever,
+                            embed_fn=embed_fn,
+                            chunk_strat=strat,
+                            embed_model=embed_model,
+                            llm_model=llm,
+                            vector_db=active_vector_db,
+                            test_dataset=None,
+                        )
+                        result["evaluation_mode"] = evaluation_modes["evaluation_mode"]
+                        matrix_results.append(result)
+                    except Exception as eval_err:
+                        matrix_results.append(
+                            {
+                                "environment": APP_ENV,
+                                "vector_db": active_vector_db,
+                                "chunking_strategy": strat,
+                                "embedding_model": embed_model,
+                                "llm_model": llm,
+                                "error": f"Evaluation error: {str(eval_err)}",
+                                "metrics": {},
+                            }
+                        )
+                    finally:
+                        gc.collect()
+
+        emit_eval_log(
+            "matrix_complete",
+            filename=filename,
+            evaluation_mode=evaluation_modes["evaluation_mode"],
+            strategies=len(selected_strategies),
+            embeddings=len(selected_embeddings),
+            llms=len(selected_llms),
+            runs=len(matrix_results),
+            duration_ms=elapsed_ms(matrix_start),
+        )
+        return matrix_results
+    finally:
+        engine._retriever_cache.clear()
+        del engine
+        gc.collect()
 
 
 @router.get("/matrix-results")
@@ -448,3 +456,5 @@ async def evaluate_uploaded_pdf(
         )
         traceback.print_exc()
         raise EvaluationProcessingException(details=str(e))
+    finally:
+        gc.collect()

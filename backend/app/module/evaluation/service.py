@@ -1,4 +1,5 @@
 import fitz  # PyMuPDF
+import gc
 import logging
 import math
 import re
@@ -349,6 +350,8 @@ class RAGBenchmarkEngine:
                     )
                 )
         doc.close()
+        del doc
+        gc.collect()
         return docs
 
     def get_chunker(
@@ -762,7 +765,7 @@ class RAGBenchmarkEngine:
         llm_instance = self.get_llm(llm_model) if self.answer_mode == "llm" else None
 
         answer_start = time.perf_counter()
-        worker_count = max(1, min(EVALUATION_ANSWER_WORKERS, len(questions)))
+        worker_count = 1  # Fixed to 1 to restrict peak RAM on 512MB instances
         if worker_count == 1:
             answer_context_pairs = [
                 self._answer_question(retriever, llm_instance, q) for q in questions
@@ -821,7 +824,7 @@ class RAGBenchmarkEngine:
             evaluator_embeddings = LangchainEmbeddingsWrapper(embed_fn)
 
             run_config = RunConfig(
-                max_workers=max(1, EVALUATION_RAGAS_WORKERS),
+                max_workers=1,  # Force single thread for RAGAS evaluation to prevent memory spikes
                 timeout=EVALUATION_RAGAS_TIMEOUT,
                 max_retries=EVALUATION_RAGAS_RETRIES,
                 max_wait=10,
@@ -847,7 +850,7 @@ class RAGBenchmarkEngine:
                 llm=llm_model,
                 questions=len(questions),
                 metrics=4,
-                workers=max(1, EVALUATION_RAGAS_WORKERS),
+                workers=1,
                 ragas_ms=metric_ms,
                 total_ms=total_ms,
             )
@@ -908,6 +911,8 @@ class RAGBenchmarkEngine:
                 metric_ms=metric_ms,
                 total_ms=total_ms,
             )
+
+        gc.collect()
 
         return {
             "environment": APP_ENV,
