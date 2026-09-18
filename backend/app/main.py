@@ -20,7 +20,9 @@ from app.common.utils.api_router import api_v1_router
 # Import SQLModel entities for Admin visual inspection
 from app.module.auth.model import User
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 
 
 # Define Admin views for SQLModel tables
@@ -50,16 +52,23 @@ app = FastAPI(
 admin = Admin(app, engine, title="RAG Benchmark Studio")
 admin.add_view(UserAdmin)
 
-allow_creds = APP_URL != "*"
-allowed_origins = [origin for origin in APP_URLS if origin and origin != "*"]
+# Explicitly ensure Vercel frontend deployments and local environments are included
+default_origins = [
+    "https://project-exhibition-delta.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+]
 
-if not allowed_origins:
-    allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+parsed_origins = [origin for origin in APP_URLS if origin and origin != "*"]
+allowed_origins = list(set(parsed_origins + default_origins))
+
+allow_creds = True if (APP_URL != "*" or len(allowed_origins) > 0) else False
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\\.ngrok(-free)?\\.dev|https://.*\\.ngrok\\.io|http://localhost:\\d+|http://127.0.0.1:\\d+",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.ngrok(-free)?\.dev|https://.*\.ngrok\.io|http://localhost:\d+|http://127.0.0.1:\d+",
     allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
