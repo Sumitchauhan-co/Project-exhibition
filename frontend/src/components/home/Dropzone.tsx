@@ -69,7 +69,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({
 					<span className="font-normal text-slate-500">or drag and drop</span>
 				</p>
 				<p className="mt-1 text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
-					PDF files up to 50MB
+					PDF files up to 5MB
 				</p>
 			</label>
 		</div>
