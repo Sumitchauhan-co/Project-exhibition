@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import api from '@/api/axios';
@@ -12,8 +12,13 @@ interface EvaluatePdfParams {
 	evaluationMode: EvaluationPreset;
 }
 
+interface JobEnqueueResponse {
+	message: string;
+	job_id: string;
+	status: 'pending' | 'processing' | 'completed' | 'failed';
+}
+
 export function useEvaluatePdf() {
-	const queryClient = useQueryClient();
 	const abortControllerRef = useRef<AbortController | null>(null);
 
 	const cancel = () => {
@@ -39,18 +44,18 @@ export function useEvaluatePdf() {
 			const controller = new AbortController();
 			abortControllerRef.current = controller;
 
-			const response = await api.post('/evaluation/evaluate-pdf', formData, {
-				signal: controller.signal,
-			});
+			const response = await api.post<JobEnqueueResponse>(
+				'/evaluation/evaluate-pdf',
+				formData,
+				{
+					signal: controller.signal,
+				},
+			);
 
-			const rawPayload = response.data;
-			return Array.isArray(rawPayload)
-				? rawPayload
-				: (rawPayload.results ?? rawPayload);
+			return response.data;
 		},
 		onSuccess: () => {
 			abortControllerRef.current = null;
-			void queryClient.invalidateQueries({ queryKey: ['evaluation'] });
 		},
 		onError: () => {
 			abortControllerRef.current = null;

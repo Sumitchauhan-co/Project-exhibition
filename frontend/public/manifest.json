@@ -70,18 +70,32 @@
 	],
 	"screenshots": [
 		{
-			"src": "/screenshots/dashboard-mobile.png",
-			"sizes": "1080x1920",
-			"type": "image/png",
-			"form_factor": "narrow",
-			"label": "RAG Matrix Evaluation Dashboard"
-		},
-		{
-			"src": "/screenshots/dashboard-desktop.png",
+			"src": "/screenshots/mobile-1.png",
 			"sizes": "1920x1080",
 			"type": "image/png",
 			"form_factor": "wide",
-			"label": "RAG Matrix Desktop Evaluation Suite"
+			"label": "RAG Matrix Evaluation Suite"
+		},
+		{
+			"src": "/screenshots/mobile-2.png",
+			"sizes": "1920x1080",
+			"type": "image/png",
+			"form_factor": "wide",
+			"label": "RAG Benchmarking Dashboard"
+		},
+		{
+			"src": "/screenshots/mobile-3.png",
+			"sizes": "1920x1080",
+			"type": "image/png",
+			"form_factor": "wide",
+			"label": "Buy Credits | Evaluate Matrix"
+		},
+		{
+			"src": "/screenshots/mobile-4.png",
+			"sizes": "1920x1080",
+			"type": "image/png",
+			"form_factor": "wide",
+			"label": "Contact Us Support"
 		}
 	]
 }

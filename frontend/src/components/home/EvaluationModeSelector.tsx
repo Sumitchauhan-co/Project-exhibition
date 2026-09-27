@@ -54,9 +54,7 @@ export function EvaluationModeSelector({
 					<Database className="w-4 h-4 text-blue-500" />
 					<div className="text-left">
 						<div className="font-semibold leading-none">Vector</div>
-						<div className="text-[10px] text-muted-foreground">
-							Chroma Embeddings
-						</div>
+						<div className="text-[10px] text-muted-foreground">Embeddings</div>
 					</div>
 				</button>
 

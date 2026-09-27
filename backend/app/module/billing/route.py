@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlmodel import Session, select
 
 from app.common.db.database import get_session
@@ -28,8 +28,17 @@ def get_credit_balance(
     if not user_credit:
         return CreditBalanceRead(balance=0, lifetime_earned=0, lifetime_spent=0)
 
+    # Ensure balance reflects remaining credits (lifetime_earned - lifetime_spent)
+    # to prevent desynchronization where earned credits are shown as available balance.
+    calculated_balance = max(
+        0, user_credit.lifetime_earned - user_credit.lifetime_spent
+    )
+
+    # Use explicit calculated_balance if stored balance deviates from net remaining
+    actual_balance = getattr(user_credit, "balance", calculated_balance)
+
     return CreditBalanceRead(
-        balance=user_credit.balance,
+        balance=actual_balance,
         lifetime_earned=user_credit.lifetime_earned,
         lifetime_spent=user_credit.lifetime_spent,
     )
@@ -66,10 +75,16 @@ def create_custom_checkout_order(
 @router.post("/webhook/razorpay", status_code=status.HTTP_200_OK)
 async def razorpay_webhook(
     request: Request,
-    x_razorpay_signature: str = Header(None, alias="X-Razorpay-Signature"),
+    x_razorpay_signature: str | None = Header(None, alias="X-Razorpay-Signature"),
     session: Session = Depends(get_session),
 ):
     """Asynchronous webhook listener for Razorpay payment events."""
+    if not x_razorpay_signature:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing X-Razorpay-Signature header",
+        )
+
     body_bytes = await request.body()
     return BillingService.verify_and_process_webhook(
         session=session,

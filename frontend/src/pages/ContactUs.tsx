@@ -83,7 +83,7 @@ export default function ContactUs() {
 	};
 
 	return (
-		<div className="min-h-screen w-full bg-zinc-50/50 dark:bg-zinc-950/50 py-10 sm:py-14">
+		<div className="min-h-screen w-full bg-zinc-50/50 dark:bg-zinc-950/50 py-6 sm:py-14">
 			<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8">
 				{/* Back Link & Header */}
 				<div className="space-y-4">

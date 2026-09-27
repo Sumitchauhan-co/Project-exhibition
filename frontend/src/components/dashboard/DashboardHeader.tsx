@@ -31,6 +31,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 					variant="outline"
 					size="sm"
 					onClick={onUploadNew}
+					disabled={loading}
 				>
 					<Upload className="w-4 h-4 mr-2" />
 					Upload New PDF
@@ -47,7 +48,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 					<RefreshCw
 						className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`}
 					/>
-					{loading ? 'Evaluating...' : 'Re-run Matrix'}
+					{loading ? 'Evaluating Matrix...' : 'Refresh Matrix'}
 				</Button>
 			)}
 		</div>

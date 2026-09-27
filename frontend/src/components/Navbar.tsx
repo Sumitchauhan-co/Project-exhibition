@@ -21,7 +21,6 @@ import {
 	PopoverTrigger,
 } from '@/components/ui/popover';
 import { formatMemberSinceDate } from '../utils/date';
-import api from '../api/axios';
 
 const navItems = [
 	{ name: 'Home', path: '/', icon: Home },
@@ -31,29 +30,14 @@ const navItems = [
 
 export const Navbar: React.FC = () => {
 	const navigate = useNavigate();
-	const { isAuthenticated, user } = useAuthStore();
-	const [creditBalance, setCreditBalance] = useState<number | null>(null);
+	const { isAuthenticated, user, creditBalance, fetchBalance } = useAuthStore();
 	const [isOpen, setIsOpen] = useState(false);
 
-	// Single fetch on mount or authentication change
-	const fetchBalance = useCallback(async () => {
-		if (!isAuthenticated) {
-			setCreditBalance(null);
-			return;
-		}
-
-		try {
-			const response = await api.get<{ balance: number }>('/billing/balance');
-			setCreditBalance(response.data.balance);
-		} catch (error) {
-			console.error('Failed to load credit balance', error);
-			setCreditBalance(null);
-		}
-	}, [isAuthenticated]);
-
 	useEffect(() => {
-		void fetchBalance();
-	}, [fetchBalance]);
+		if (isAuthenticated) {
+			void fetchBalance();
+		}
+	}, [isAuthenticated, fetchBalance]);
 
 	const handleHomeClick = useCallback(() => {
 		navigate('/');
@@ -236,7 +220,6 @@ export const Navbar: React.FC = () => {
 
 						{isAuthenticated ? (
 							<div className="flex flex-col gap-3">
-								{/* Updated Mobile User Header & Meta Info */}
 								<div className="flex flex-col gap-2 rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-3 dark:border-zinc-800/60 dark:bg-zinc-800/30">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2.5 min-w-0">

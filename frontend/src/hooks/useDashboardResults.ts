@@ -8,6 +8,15 @@ interface DashboardResultsOptions {
 	fallbackData?: PipelineResult[];
 }
 
+interface MatrixResultsResponse {
+	job_id?: string;
+	user_id?: number;
+	filename?: string;
+	estimated_credits?: number;
+	total_runs?: number;
+	results: PipelineResult[];
+}
+
 export function useDashboardResults({
 	enabled,
 	fallbackData = [],
@@ -15,16 +24,18 @@ export function useDashboardResults({
 	return useQuery({
 		queryKey: ['evaluation', 'matrix-results'],
 		queryFn: async () => {
-			const response = await api.get<
-				PipelineResult[] | { results: PipelineResult[] }
-			>('/evaluation/matrix-results');
+			const response = await api.get<PipelineResult[] | MatrixResultsResponse>(
+				'/evaluation/matrix-results',
+			);
 
 			const rawData = response.data;
-			return Array.isArray(rawData)
-				? rawData
-				: rawData && 'results' in rawData && Array.isArray(rawData.results)
-					? rawData.results
-					: [];
+			if (Array.isArray(rawData)) {
+				return rawData;
+			}
+			if (rawData && 'results' in rawData && Array.isArray(rawData.results)) {
+				return rawData.results;
+			}
+			return [];
 		},
 		enabled,
 		initialData: fallbackData,

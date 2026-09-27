@@ -1,4 +1,3 @@
-import fitz  # PyMuPDF
 import gc
 import logging
 import math
@@ -7,6 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Tuple
 
+import pymupdf  # PyMuPDF
 from langchain_core.documents import Document
 from ragas.run_config import RunConfig
 
@@ -335,9 +335,9 @@ class RAGBenchmarkEngine:
         )
 
     def _load_pdf_with_pymupdf(self, pdf_bytes: bytes, filename: str) -> List[Document]:
-        """Fast in-memory parsing using C-native PyMuPDF (fitz)."""
+        """Fast in-memory parsing using C-native PyMuPDF (pymupdf)."""
         docs = []
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
 
         for page_num in range(len(doc)):
             page = doc[page_num]

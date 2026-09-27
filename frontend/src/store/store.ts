@@ -7,8 +7,10 @@ interface AuthState {
 	accessToken: string | null;
 	isAuthenticated: boolean;
 	isLoaded: boolean;
+	creditBalance: number | null;
 	setAccessToken: (token: string | null) => void;
 	setUser: (user: User | null) => void;
+	fetchBalance: () => Promise<void>;
 	signin: (email: string, password: string) => Promise<void>;
 	googleSignin: (idToken: string) => Promise<void>;
 	signup: (fullName: string, email: string, password: string) => Promise<void>;
@@ -22,11 +24,23 @@ const useAuthStore = create<AuthState>((set, get) => ({
 	accessToken: null,
 	isAuthenticated: false,
 	isLoaded: false,
+	creditBalance: null,
 
 	setAccessToken: (token) =>
 		set({ accessToken: token, isAuthenticated: !!token }),
 
 	setUser: (user) => set({ user, isAuthenticated: !!user }),
+
+	fetchBalance: async () => {
+		if (!get().isAuthenticated) return;
+		try {
+			const response = await api.get<{ balance: number }>('/billing/balance');
+			set({ creditBalance: response.data.balance });
+		} catch (error) {
+			console.error('Failed to load credit balance', error);
+			set({ creditBalance: null });
+		}
+	},
 
 	signin: async (email, password) => {
 		const res = await api.post<{ access_token: string }>('/auth/signin', {
@@ -74,6 +88,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 				isAuthenticated: true,
 				isLoaded: true,
 			});
+			void get().fetchBalance();
 		} catch (error) {
 			console.log(error);
 
@@ -82,6 +97,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 				accessToken: null,
 				isAuthenticated: false,
 				isLoaded: true,
+				creditBalance: null,
 			});
 		}
 	},
@@ -92,6 +108,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 			accessToken: null,
 			isAuthenticated: false,
 			isLoaded: true,
+			creditBalance: null,
 		}),
 }));
 

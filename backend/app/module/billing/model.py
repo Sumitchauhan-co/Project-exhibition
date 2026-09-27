@@ -34,17 +34,22 @@ class UserCreditBase(SQLModel):
 class UserCredit(UserCreditBase, table=True):
     __tablename__ = "user_credits"
     __table_args__ = (
+        # Ensures balance never exceeds net remaining credits (lifetime_earned - lifetime_spent)
         CheckConstraint(
             "balance <= (lifetime_earned - lifetime_spent)",
             name="check_balance_integrity",
         ),
         CheckConstraint("balance >= 0", name="check_positive_balance"),
         CheckConstraint("lifetime_spent >= 0", name="check_positive_spent"),
+        CheckConstraint("lifetime_earned >= 0", name="check_positive_earned"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", unique=True, index=True)
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+    )
 
     user: Optional["User"] = Relationship(back_populates="credit")
 
@@ -103,7 +108,10 @@ class PaymentOrder(PaymentOrderBase, table=True):
         default=None, description="Webhook signature verification"
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+    )
 
     user: Optional["User"] = Relationship()
 

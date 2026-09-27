@@ -1,12 +1,22 @@
 import asyncio
+import enum
 import gc
 import json
 import logging
 import time
 import traceback
-from typing import List, Optional
+import uuid
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
 from sqlmodel import Session, select
 
 from app.common.db.database import get_session
@@ -33,7 +43,7 @@ from app.common.utils.exceptions import (
 from app.module.auth.deps import get_current_user
 from app.module.auth.model import User
 from app.module.billing.service import BillingService
-from app.module.evaluation.model import EvaluationResultItem, EvaluationRun
+from app.module.evaluation.model import EvaluationResultItem, EvaluationRun, JobStatus
 from app.module.evaluation.service import RAGBenchmarkEngine
 
 router = APIRouter(prefix="/evaluation", tags=["Evaluation"])
@@ -228,6 +238,97 @@ def _run_matrix_evaluations(
         gc.collect()
 
 
+def process_evaluation_background(
+    job_id: str,
+    contents: bytes,
+    filename: str,
+    selected_strategies: List[str],
+    selected_embeddings: List[str],
+    selected_llms: List[str],
+    active_vector_db: str,
+    evaluation_modes: dict,
+    user_id: int,
+    user_credit_balance: Optional[int],
+    estimated_cost: float,
+):
+    """Background execution task to run evaluation matrix and persist results."""
+    from app.common.db.database import engine as db_engine
+
+    with Session(db_engine) as session:
+        statement = select(EvaluationRun).where(EvaluationRun.job_id == job_id)
+        eval_run = session.exec(statement).first()
+        if not eval_run:
+            return
+
+        try:
+            eval_run.status = JobStatus.PROCESSING
+            session.add(eval_run)
+            session.commit()
+
+            matrix_results = _run_matrix_evaluations(
+                contents,
+                filename,
+                selected_strategies,
+                selected_embeddings,
+                selected_llms,
+                active_vector_db,
+                evaluation_modes,
+                user_credit_balance,
+                estimated_cost,
+            )
+
+            eval_run.total_runs = len(matrix_results)
+            eval_run.status = JobStatus.COMPLETED
+
+            for res in matrix_results:
+                result_item = EvaluationResultItem(
+                    evaluation_run_id=eval_run.id,
+                    chunking_strategy=res.get("chunking_strategy", ""),
+                    embedding_model=res.get("embedding_model", ""),
+                    llm_model=res.get("llm_model", ""),
+                    environment=res.get("environment", APP_ENV),
+                    vector_db=res.get("vector_db", active_vector_db),
+                    evaluation_mode=res.get(
+                        "evaluation_mode", evaluation_modes["evaluation_mode"]
+                    ),
+                    latency_ms=res.get("latency_ms"),
+                    error=res.get("error"),
+                    metrics=res.get("metrics", {}),
+                )
+                session.add(result_item)
+
+            session.commit()
+
+            payload = {
+                "job_id": job_id,
+                "user_id": user_id,
+                "filename": filename,
+                "vector_db": active_vector_db,
+                "evaluation_mode": evaluation_modes["evaluation_mode"],
+                "estimated_credits": estimated_cost,
+                "total_runs": len(matrix_results),
+                "results": matrix_results,
+            }
+            store_latest_evaluation_results(user_id, payload)
+
+        except Exception as e:
+            session.rollback()
+            eval_run.status = JobStatus.FAILED
+            eval_run.error_message = str(e)
+            session.add(eval_run)
+            session.commit()
+
+            BillingService.refund_credits_for_evaluation(
+                session=session,
+                user_id=user_id,
+                required_credits=estimated_cost,
+                context=f"{filename} (Fatal system failure: {str(e)})",
+            )
+            traceback.print_exc()
+        finally:
+            gc.collect()
+
+
 @router.get("/matrix-results")
 async def get_matrix_results(
     current_user: User = Depends(get_current_user),
@@ -237,6 +338,7 @@ async def get_matrix_results(
     statement = (
         select(EvaluationRun)
         .where(EvaluationRun.user_id == current_user.id)
+        .where(EvaluationRun.status == JobStatus.COMPLETED)
         .order_by(EvaluationRun.created_at.desc())
     )
     latest_run = session.exec(statement).first()
@@ -257,6 +359,7 @@ async def get_matrix_results(
             for item in latest_run.results
         ]
         return {
+            "job_id": latest_run.job_id,
             "user_id": current_user.id,
             "filename": latest_run.filename,
             "estimated_credits": latest_run.estimated_credits,
@@ -268,6 +371,7 @@ async def get_matrix_results(
         current_user.id, {"results": [], "total_runs": 0}
     )
     return {
+        "job_id": cached.get("job_id"),
         "user_id": current_user.id,
         "filename": cached.get("filename"),
         "estimated_credits": cached.get("estimated_credits", 0),
@@ -276,8 +380,60 @@ async def get_matrix_results(
     }
 
 
+@router.get("/job-status/{job_id}")
+async def get_job_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Poll evaluation job progress and retrieve completed result matrix."""
+    statement = (
+        select(EvaluationRun)
+        .where(EvaluationRun.job_id == job_id)
+        .where(EvaluationRun.user_id == current_user.id)
+    )
+    eval_run = session.exec(statement).first()
+
+    if not eval_run:
+        raise HTTPException(status_code=404, detail="Evaluation job not found.")
+
+    if eval_run.status != JobStatus.COMPLETED:
+        return {
+            "job_id": job_id,
+            "status": eval_run.status,
+            "error": eval_run.error_message,
+            "filename": eval_run.filename,
+            "results": [],
+        }
+
+    result_items = [
+        {
+            "environment": item.environment,
+            "vector_db": item.vector_db,
+            "chunking_strategy": item.chunking_strategy,
+            "embedding_model": item.embedding_model,
+            "llm_model": item.llm_model,
+            "evaluation_mode": item.evaluation_mode,
+            "latency_ms": item.latency_ms,
+            "error": item.error,
+            "metrics": item.metrics,
+        }
+        for item in eval_run.results
+    ]
+
+    return {
+        "job_id": job_id,
+        "status": eval_run.status,
+        "filename": eval_run.filename,
+        "estimated_credits": eval_run.estimated_credits,
+        "total_runs": eval_run.total_runs,
+        "results": result_items,
+    }
+
+
 @router.post("/evaluate-pdf")
 async def evaluate_uploaded_pdf(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     strategies: Optional[str] = Form(None),
     llm_models: Optional[str] = Form(None),
@@ -286,6 +442,7 @@ async def evaluate_uploaded_pdf(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    """Enqueues PDF evaluation as an asynchronous background job and immediately returns job_id."""
     request_start = time.perf_counter()
     estimated_cost = 0
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -374,70 +531,47 @@ async def evaluate_uploaded_pdf(
                 details="Unable to reserve credits for this run."
             )
 
-        matrix_start = time.perf_counter()
-        matrix_results = await asyncio.to_thread(
-            _run_matrix_evaluations,
-            contents,
-            file.filename,
-            selected_strategies,
-            selected_embeddings,
-            selected_llms,
-            active_vector_db,
-            evaluation_modes,
-            user_credit_balance,
-            estimated_cost,
-        )
-        matrix_ms = elapsed_ms(matrix_start)
-
+        job_id = str(uuid.uuid4())
         eval_run = EvaluationRun(
+            job_id=job_id,
             user_id=user_id,
             filename=file.filename,
             vector_db=active_vector_db,
             evaluation_mode=evaluation_modes["evaluation_mode"],
             estimated_credits=estimated_cost,
-            total_runs=len(matrix_results),
+            status=JobStatus.PENDING,
         )
         session.add(eval_run)
-        session.flush()
-
-        for res in matrix_results:
-            result_item = EvaluationResultItem(
-                evaluation_run_id=eval_run.id,
-                chunking_strategy=res.get("chunking_strategy", ""),
-                embedding_model=res.get("embedding_model", ""),
-                llm_model=res.get("llm_model", ""),
-                environment=res.get("environment", APP_ENV),
-                vector_db=res.get("vector_db", active_vector_db),
-                evaluation_mode=res.get(
-                    "evaluation_mode", evaluation_modes["evaluation_mode"]
-                ),
-                latency_ms=res.get("latency_ms"),
-                error=res.get("error"),
-                metrics=res.get("metrics", {}),
-            )
-            session.add(result_item)
-
         session.commit()
 
-        payload = {
-            "user_id": user_id,
-            "filename": file.filename,
-            "vector_db": active_vector_db,
-            "evaluation_mode": evaluation_modes["evaluation_mode"],
-            "estimated_credits": estimated_cost,
-            "total_runs": len(matrix_results),
-            "results": matrix_results,
-        }
+        background_tasks.add_task(
+            process_evaluation_background,
+            job_id=job_id,
+            contents=contents,
+            filename=file.filename,
+            selected_strategies=selected_strategies,
+            selected_embeddings=selected_embeddings,
+            selected_llms=selected_llms,
+            active_vector_db=active_vector_db,
+            evaluation_modes=evaluation_modes,
+            user_id=user_id,
+            user_credit_balance=user_credit_balance,
+            estimated_cost=estimated_cost,
+        )
+
         emit_eval_log(
-            "request_complete",
+            "request_queued",
+            job_id=job_id,
             user_id=user_id,
             filename=file.filename,
-            evaluation_mode=evaluation_modes["evaluation_mode"],
-            runs=len(matrix_results),
-            matrix_ms=matrix_ms,
             total_ms=elapsed_ms(request_start),
         )
-        return store_latest_evaluation_results(user_id, payload)
+
+        return {
+            "message": "Evaluation job enqueued successfully.",
+            "job_id": job_id,
+            "status": JobStatus.PENDING,
+        }
 
     except (
         InvalidFileException,
@@ -456,5 +590,3 @@ async def evaluate_uploaded_pdf(
         )
         traceback.print_exc()
         raise EvaluationProcessingException(details=str(e))
-    finally:
-        gc.collect()

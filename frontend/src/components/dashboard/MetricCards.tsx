@@ -1,7 +1,6 @@
-import React from 'react';
-import { Activity, Award, Cpu, Database } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Activity, Award, Cpu, Database, Loader2 } from 'lucide-react';
 import { type PipelineResult } from '../../types/evaluation';
-import { MetricSkeleton } from '../Skeleton';
 
 interface MetricCardsProps {
 	data: PipelineResult[];
@@ -10,30 +9,88 @@ interface MetricCardsProps {
 }
 
 export const MetricCards: React.FC<MetricCardsProps> = ({
-	data,
+	data = [],
 	loading,
 	topConfig,
 }) => {
+	const [elapsedTime, setElapsedTime] = useState(0);
+
+	useEffect(() => {
+		if (!loading) {
+			setElapsedTime(0);
+			return;
+		}
+
+		const timer = setInterval(() => {
+			setElapsedTime((prev) => prev + 1);
+		}, 1000);
+
+		return () => clearInterval(timer);
+	}, [loading]);
+
 	if (loading) {
 		return (
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-				<MetricSkeleton />
-				<MetricSkeleton />
-				<MetricSkeleton />
-				<MetricSkeleton />
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground">
+					<Loader2 className="h-8 w-8 shrink-0 animate-spin text-primary" />
+					<div>
+						<p className="text-xs font-semibold uppercase text-muted-foreground">
+							Evaluated Pipelines
+						</p>
+						<p className="text-2xl font-bold text-foreground">Analyzing...</p>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground">
+					<Loader2 className="h-8 w-8 shrink-0 animate-spin text-emerald-500" />
+					<div>
+						<p className="text-xs font-semibold uppercase text-muted-foreground">
+							Top Performer
+						</p>
+						<p className="text-2xl font-bold text-emerald-500">Computing...</p>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground">
+					<Loader2 className="h-8 w-8 shrink-0 animate-spin text-amber-500" />
+					<div>
+						<p className="text-xs font-semibold uppercase text-muted-foreground">
+							Peak Recall
+						</p>
+						<p className="text-2xl font-bold text-foreground">Measuring...</p>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground">
+					<Loader2 className="h-8 w-8 shrink-0 animate-spin text-chart-4" />
+					<div>
+						<p className="text-xs font-semibold uppercase text-muted-foreground">
+							Elapsed Time
+						</p>
+						<p className="text-2xl font-bold text-foreground">{elapsedTime}s</p>
+					</div>
+				</div>
 			</div>
 		);
 	}
 
+	const safeData = Array.isArray(data) ? data : [];
+
 	const avgLatency =
-		data.length > 0
+		safeData.length > 0
 			? (
-					data.reduce((acc, curr) => acc + curr.latency_ms, 0) / data.length
+					safeData.reduce((acc, curr) => acc + (curr?.latency_ms ?? 0), 0) /
+					safeData.length
 				).toFixed(1)
-			: 0;
+			: '0.0';
+
+	const peakRecall =
+		topConfig?.metrics?.context_recall !== undefined
+			? topConfig.metrics.context_recall.toFixed(3)
+			: '0.000';
 
 	return (
-		<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+		<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 			<div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-card-foreground">
 				<Database className="h-8 w-8 shrink-0 text-primary" />
 				<div>
@@ -41,7 +98,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 						Evaluated Pipelines
 					</p>
 					<p className="text-2xl font-bold text-foreground">
-						{data.length} Configs
+						{safeData.length} Configs
 					</p>
 				</div>
 			</div>
@@ -53,7 +110,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 						Top Performer
 					</p>
 					<p className="max-w-37.5 truncate text-lg font-bold text-emerald-500">
-						{topConfig ? topConfig.chunking_strategy : 'N/A'}
+						{topConfig?.chunking_strategy ?? 'N/A'}
 					</p>
 				</div>
 			</div>
@@ -64,9 +121,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
 					<p className="text-xs font-semibold uppercase text-muted-foreground">
 						Peak Recall
 					</p>
-					<p className="text-2xl font-bold text-foreground">
-						{topConfig ? topConfig.metrics.context_recall.toFixed(3) : '0.000'}
-					</p>
+					<p className="text-2xl font-bold text-foreground">{peakRecall}</p>
 				</div>
 			</div>
 

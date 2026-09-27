@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { SelectedFileCard } from '../components/home/SelectedFileCard';
 import { useEvaluatePdf } from '../hooks/useEvaluatePdf';
 import { useProcessingStore } from '../store/processing-store';
+import useAuthStore from '../store/store';
 import { toast } from '../components/ui/toast';
 import type { EvaluationPreset } from '@/types/evaluation';
 
@@ -27,9 +28,7 @@ export default function Home() {
 		useState<EvaluationPreset>('fast');
 
 	const isProd = import.meta.env.VITE_APP_ENV === 'prod';
-	console.log('Production : ', isProd);
 
-	// Model and Strategy Selections
 	const [selectedStrategies, setSelectedStrategies] = useState<string[]>([
 		'agentic',
 	]);
@@ -42,12 +41,19 @@ export default function Home() {
 		isProd ? 'text-embedding-3-small' : 'qwen3-embedding:latest',
 	]);
 
-	const { isProcessing, setProcessing, clearProcessing } = useProcessingStore();
-	const {
-		mutateAsync: evaluatePdf,
-		isPending: isEvaluating,
-		cancel,
-	} = useEvaluatePdf();
+	// Extract actions directly from store definition
+	const isProcessing = useProcessingStore((state) => state.isProcessing);
+	const startProcessing = useProcessingStore((state) => state.startProcessing);
+	const finishProcessing = useProcessingStore(
+		(state) => state.finishProcessing,
+	);
+	const cancelCurrentEvaluation = useProcessingStore(
+		(state) => state.cancelCurrentEvaluation,
+	);
+	const fetchBalance = useAuthStore((state) => state.fetchBalance);
+
+	const { mutateAsync: evaluatePdf, isPending: isEvaluating } =
+		useEvaluatePdf();
 	const [error, setError] = useState<string | null>(null);
 
 	const navigate = useNavigate();
@@ -113,15 +119,12 @@ export default function Home() {
 		}
 
 		const fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
-		setProcessing({
-			isProcessing: true,
+		startProcessing({
 			fileName: file.name,
 			fileSize,
 			totalRuns,
-			startedAt: Date.now(),
-			estimatedSeconds: estimatedSeconds,
+			estimatedSeconds,
 			statusSteps: DEFAULT_EVALUATION_STEPS,
-			cancelHandler: cancel,
 		});
 		setError(null);
 
@@ -153,7 +156,9 @@ export default function Home() {
 				evaluationMode,
 			});
 
-			clearProcessing();
+			void fetchBalance();
+			finishProcessing();
+
 			navigate('/dashboard', {
 				replace: true,
 				state: {
@@ -167,7 +172,7 @@ export default function Home() {
 				axios.isAxiosError(err) &&
 				(err.code === 'ERR_CANCELED' || err.message === 'canceled');
 			if (isCancelled) {
-				clearProcessing();
+				cancelCurrentEvaluation();
 				navigate('/', { replace: true });
 				return;
 			}
@@ -188,14 +193,14 @@ export default function Home() {
 				'redirect_to' in detail &&
 				typeof detail.redirect_to === 'string'
 			) {
-				clearProcessing();
+				cancelCurrentEvaluation();
 				navigate(String(detail.redirect_to), {
 					state: { creditGuard: detail },
 				});
 				return;
 			}
 
-			clearProcessing();
+			cancelCurrentEvaluation();
 			setError(message);
 		}
 	};
@@ -229,14 +234,12 @@ export default function Home() {
 				/>
 			)}
 
-			{/* Modular Evaluation Mode Selector */}
 			<EvaluationModeSelector
 				value={evaluationMode}
 				onChange={setEvaluationMode}
 				disabled={isProcessing || isEvaluating}
 			/>
 
-			{/* Modular Strategy & Model Selector */}
 			<ChunkingStrategySelector
 				selectedStrategies={selectedStrategies}
 				onChangeStrategies={setSelectedStrategies}
