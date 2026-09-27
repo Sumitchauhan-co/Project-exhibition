@@ -84,21 +84,46 @@ export default function Dashboard() {
 		if (Array.isArray(dashboardData)) return dashboardData;
 		return [];
 	}, [routerResults, dashboardData]);
+
 	const fetchBalance = useAuthStore((state) => state.fetchBalance);
 
-	// Auto-poll and stop processing status once data arrives
+	// Auto-poll with exponential backoff & clear timeout when fulfilled
 	useEffect(() => {
 		if (!isProcessing) return;
 
-		const pollInterval = window.setInterval(async () => {
-			const { data } = await refetch();
-			if (data && Array.isArray(data) && data.length > 0) {
-				finishProcessing();
-				void fetchBalance(); // Refresh credits in Navbar instantly!
-			}
-		}, 3000);
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		let isSubscribed = true;
+		let currentDelay = 3000; // Initial delay: 3s
+		const maxDelay = 15000; // Cap delay at 15s
 
-		return () => window.clearInterval(pollInterval);
+		const poll = async () => {
+			try {
+				const { data } = await refetch();
+
+				// If request returned valid results, stop polling and finish processing
+				if (isSubscribed && data && Array.isArray(data) && data.length > 0) {
+					finishProcessing();
+					void fetchBalance();
+					return;
+				}
+			} catch (err) {
+				console.error('Error polling dashboard results:', err);
+			}
+
+			// Schedule next poll only if still processing & component is mounted
+			if (isSubscribed) {
+				currentDelay = Math.min(currentDelay * 1.5, maxDelay);
+				timeoutId = setTimeout(poll, currentDelay);
+			}
+		};
+
+		// Initial poll schedule after 3s
+		timeoutId = setTimeout(poll, currentDelay);
+
+		return () => {
+			isSubscribed = false;
+			if (timeoutId) clearTimeout(timeoutId);
+		};
 	}, [isProcessing, refetch, finishProcessing, fetchBalance]);
 
 	// Also complete processing & update credits if data populates via router state or initial query
@@ -108,6 +133,7 @@ export default function Dashboard() {
 			void fetchBalance();
 		}
 	}, [isProcessing, safeData.length, finishProcessing, fetchBalance]);
+
 	const loading = isLoading && safeData.length === 0;
 
 	const error = useMemo(() => {

@@ -9,16 +9,21 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/project_exhibition"
 )
 
-# Optimized engine setup:
-# 1. Disabled echo logging (echo=False) to stop string formatting overhead in RAM.
-# 2. Reduced pool_size and max_overflow to keep connection memory footprint lightweight.
+# Optimized engine setup for Neon / Serverless PostgreSQL:
+# 1. Disabled echo logging (echo=False) to reduce RAM overhead.
+# 2. pool_pre_ping & pool_recycle handle Neon compute autosuspend/stale sockets.
+# 3. sslmode=require and prepare_threshold=0 prevent PgBouncer SSL drop errors.
 engine = create_engine(
     DATABASE_URL,
-    echo=False,  # Set to False to prevent high RAM consumption from query logging
-    pool_pre_ping=True,  # Checks connection validity before executing queries
-    pool_recycle=300,  # Recycles connections every 5 minutes (300s)
-    pool_size=5,  # Reduced active pool size for free tier hosting memory management
-    max_overflow=5,  # Reduced max overflow burst connections
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=5,
+    connect_args={
+        "sslmode": "require" if "neon.tech" in DATABASE_URL else "prefer",
+        "options": "-c prepare_threshold=0",
+    },
 )
 
 
