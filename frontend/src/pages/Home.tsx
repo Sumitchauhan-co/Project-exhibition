@@ -119,7 +119,10 @@ export default function Home() {
 		}
 
 		const fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+		const jobId = crypto.randomUUID();
+
 		startProcessing({
+			jobId,
 			fileName: file.name,
 			fileSize,
 			totalRuns,
