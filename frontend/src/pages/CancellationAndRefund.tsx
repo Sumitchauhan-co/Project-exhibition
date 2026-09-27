@@ -40,7 +40,7 @@ export default function CancellationAndRefund() {
 							</h1>
 						</div>
 						<p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-							Last updated: September 11, 2026. Terms regarding credit pack
+							Last updated: September 27, 2026. Terms regarding credit pack
 							purchases, instant digital fulfillment, and refund eligibility for
 							RAG Matrix.
 						</p>
@@ -96,27 +96,31 @@ export default function CancellationAndRefund() {
 					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
 						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
 							<RotateCcw className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-							3. Refund Eligibility
+							3. Refund Eligibility & Guarantee Disclaimer
 						</div>
 						<p>
 							As digital credits are made available instantly for chunking
 							strategy benchmarks and evaluation queries, all credit sales are
 							generally <strong>final and non-refundable</strong>.
 						</p>
+						<p className="mt-2">
+							<strong>Refunds are not 100% guaranteed to be initiated.</strong>{' '}
+							Submitting a request or experiencing an issue does not
+							automatically entitle you to a cash refund.
+						</p>
 						<div className="mt-3 space-y-2">
 							<p className="text-zinc-700 dark:text-zinc-300 font-medium">
-								Exceptions & Special Conditions for Refund:
+								Possible Refund Conditions (Subject to Team Approval):
 							</p>
 							<ul className="list-disc pl-5 space-y-1 text-zinc-600 dark:text-zinc-400">
 								<li>
-									<strong>Duplicate Payment:</strong> If your account is
-									double-billed due to a technical payment gateway issue, the
-									extra charge will be refunded upon verification.
+									<strong>Duplicate Payment:</strong> Double-billing verified as
+									a payment gateway system glitch.
 								</li>
 								<li>
-									<strong>Failed Credit Fulfillment:</strong> If payment
-									succeeds but technical errors prevent credits from being
-									deposited to your balance within 24 hours.
+									<strong>Unfulfilled Credit Delivery:</strong> Verified payment
+									deduction where technical failures prevented credit loading
+									within 24 hours.
 								</li>
 							</ul>
 						</div>
@@ -126,29 +130,29 @@ export default function CancellationAndRefund() {
 					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
 						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
 							<Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-							4. Refund Processing Timeline
+							4. Refund Review & Processing Timeline
 						</div>
 						<p>
-							In cases where an exception refund is approved by our billing
-							support:
+							If your condition meets our eligibility criteria and our team has{' '}
+							<strong>reviewed and approved</strong> the refund request:
 						</p>
 						<div className="mt-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/50 p-4 border border-zinc-200/50 dark:border-zinc-800/50 text-xs text-zinc-700 dark:text-zinc-300 space-y-1">
 							<p>
 								<strong>Initiation:</strong> Approved refunds will be initiated
-								within <strong>2 business days</strong>.
+								within <strong>2 business days</strong> of approval.
 							</p>
 							<p>
 								<strong>Credit Timeframe:</strong> The refunded amount will
 								reflect in your original payment method within{' '}
 								<strong>5 to 7 working days</strong>, depending on bank and
-								Razorpay processing schedules.
+								payment processor schedules.
 							</p>
 						</div>
 					</section>
 
 					{/* Non-Refundable Items */}
 					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
-						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
+						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-amber-500 mb-2">
 							<AlertCircle className="h-5 w-5 text-amber-500" />
 							5. Non-Refundable Scenarios
 						</div>
@@ -169,18 +173,20 @@ export default function CancellationAndRefund() {
 					<section>
 						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-base mb-2">
 							<HelpCircle className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-							6. Contacting Support
+							6. Submitting a Refund Claim
 						</div>
 						<p>
-							If you experience payment deduction errors, duplicate
-							transactions, or credit delivery delays, reach out to us at{' '}
-							<a
-								href="mailto:sumit.chauhan.code@gmail.com"
+							If you believe your condition meets our policy requirements,
+							please visit our{' '}
+							<Link
+								to="/contact-us"
 								className="text-indigo-600 dark:text-indigo-400 underline font-medium"
 							>
-								sumit.chauhan.code@gmail.com
-							</a>{' '}
-							with your payment reference ID and registered email address.
+								Contact Us page
+							</Link>{' '}
+							to raise a ticket with customer support. Be sure to include your
+							transaction reference ID and registered email address. We will
+							inspect your case and notify you once a decision has been made.
 						</p>
 					</section>
 				</div>
@@ -200,8 +206,8 @@ export default function CancellationAndRefund() {
 							</span>
 						</label>
 						<p className="text-xs text-zinc-500 dark:text-zinc-400 pl-7">
-							By checking this box, you acknowledge that credit pack purchases
-							are non-refundable once credited.
+							By checking this box, you acknowledge that refunds are not
+							guaranteed and require manual support approval.
 						</p>
 					</div>
 

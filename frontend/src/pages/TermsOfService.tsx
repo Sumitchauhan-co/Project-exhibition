@@ -8,6 +8,7 @@ import {
 	ArrowLeft,
 	CheckCircle2,
 	ArrowRight,
+	Server,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -39,7 +40,7 @@ export default function TermsOfService() {
 							</h1>
 						</div>
 						<p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-							Last updated: September 11, 2026. Terms governing the use of the
+							Last updated: September 27, 2026. Terms governing the use of the
 							RAG Matrix Evaluation platform and service offerings.
 						</p>
 					</div>
@@ -64,21 +65,53 @@ export default function TermsOfService() {
 					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
 						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
 							<CreditCard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-							2. Account Registration & Pricing
+							2. Account Registration, Credits & Payments
 						</div>
 						<p>
 							You must provide accurate information when creating an account.
-							Access to specific platform features or evaluation quotas requires
-							an active subscription or credits purchased via our payment
-							gateway. Prices and plan thresholds are detailed on our pricing
-							page and are subject to change with advance notification.
+							Access to evaluation features requires purchasing credits or
+							maintaining an active subscription via our payment gateway.
+						</p>
+						<p className="mt-2">
+							Credit usage and monetary deductions occur upon submitting an
+							evaluation job. Users acknowledge that they are responsible for
+							credit balances consumed during processing.
+						</p>
+					</section>
+
+					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
+						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
+							<Server className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+							3. Service Availability & Uptime Disclaimer
+						</div>
+						<p>
+							We strive to provide reliable services; however,{' '}
+							<strong>
+								we do not guarantee 100% server uptime or uninterrupted
+								availability
+							</strong>
+							. Infrastructure maintenance, host server restarts, high system
+							loads, or external cloud disruptions may cause temporary downtime
+							or service interruptions.
+						</p>
+						<p className="mt-2">
+							Furthermore,{' '}
+							<strong>
+								we do not guarantee that you will successfully view or render
+								the full evaluation matrix
+							</strong>{' '}
+							after purchasing and applying credits. Benchmark generation relies
+							on third-party LLM providers, vector indexing pipelines, and
+							real-time processing, which may occasionally fail or timeout due
+							to external API errors, malformed document parsing, or rate
+							limits.
 						</p>
 					</section>
 
 					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
 						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
 							<AlertTriangle className="h-5 w-5 text-amber-500" />
-							3. Usage & API Rate Limits
+							4. Usage & API Rate Limits
 						</div>
 						<p>
 							Users must adhere to reasonable usage thresholds based on their
@@ -95,7 +128,7 @@ export default function TermsOfService() {
 					<section className="border-b border-zinc-100 dark:border-zinc-800/60 pb-6">
 						<div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-lg mb-2">
 							<Ban className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-							4. Intellectual Property & Service Level
+							5. Intellectual Property & Limitation of Liability
 						</div>
 						<p>
 							You retain all ownership of the datasets and data inputs submitted
@@ -104,25 +137,26 @@ export default function TermsOfService() {
 						</p>
 						<p className="mt-2">
 							Services are provided "AS IS" and "AS AVAILABLE". We are not
-							liable for transient downstream LLM API failures, third-party
-							model latencies, or vector database disruptions.
+							liable for any monetary loss, credit deduction, transient
+							downstream LLM API failures, third-party model latencies, or
+							vector database disruptions.
 						</p>
 					</section>
 
 					<section>
 						<h3 className="text-zinc-900 dark:text-zinc-100 font-semibold text-base mb-2">
-							5. Contact & Termination
+							6. Contact & Termination
 						</h3>
 						<p>
 							We reserve the right to terminate or suspend access for accounts
 							violating these terms. For questions regarding our terms, reach
 							out to support at{' '}
-							<a
-								href="mailto:sumit.chauhan.code@gmail.com"
+							<Link
+								to="/contact-us"
 								className="text-indigo-600 dark:text-indigo-400 underline font-medium"
 							>
-								sumit.chauhan.code@gmail.com
-							</a>
+								Contact Us page
+							</Link>
 							.
 						</p>
 					</section>

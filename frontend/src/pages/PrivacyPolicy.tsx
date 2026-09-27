@@ -126,12 +126,12 @@ export default function PrivacyPolicy() {
 							permanently delete your evaluation history and account metadata at
 							any time through your dashboard settings. For privacy inquiries or
 							requests, contact us at{' '}
-							<a
-								href="mailto:sumit.chauhan.code@gmail.com"
+							<Link
+								to="/contact-us"
 								className="text-indigo-600 dark:text-indigo-400 underline font-medium"
 							>
-								sumit.chauhan.code@gmail.com
-							</a>
+								Contact Us page
+							</Link>{' '}
 							.
 						</p>
 					</section>
