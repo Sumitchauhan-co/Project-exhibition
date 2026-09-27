@@ -135,7 +135,7 @@ export const BenchmarkChart: React.FC<BenchmarkChartProps> = ({
 		labels: safeData.map(
 			(item) =>
 				`${item?.chunking_strategy ?? ''} (${
-					item?.embedding_model || item?.environment || 'dev'
+					item?.embedding_model || item?.environment || 'processing...'
 				})`,
 		),
 		datasets: [

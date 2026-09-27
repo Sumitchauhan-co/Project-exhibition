@@ -156,6 +156,9 @@ class BillingService:
         required_credits: int,
         context: str,
     ) -> UserCredit:
+        if required_credits <= 0:
+            return BillingService.get_or_create_user_credit(session, user_id)
+
         user_credit = BillingService.ensure_sufficient_balance(
             session,
             user_id,
@@ -183,20 +186,46 @@ class BillingService:
     def refund_credits_for_evaluation(
         session: Session,
         user_id: int,
-        required_credits: int,
+        reserved_credits: int,
         context: str,
     ) -> UserCredit:
+        """
+        Safely refunds reserved credits upon execution failure.
+        Only refunds what was previously reserved for the context, matched against USAGE transactions.
+        """
+        if reserved_credits <= 0:
+            return BillingService.get_or_create_user_credit(session, user_id)
+
         user_credit = BillingService.get_or_create_user_credit(session, user_id)
 
-        # Preventing balance from exceeding (lifetime_earned - lifetime_spent)
-        refundable_amount = min(required_credits, user_credit.lifetime_spent)
+        # Check for the matching usage transaction for this evaluation context
+        desc = f"Evaluation cost reserved: {context} ({reserved_credits} credits)"
+        usage_tx = session.exec(
+            select(CreditTransaction)
+            .where(
+                CreditTransaction.user_id == user_id,
+                CreditTransaction.type == TransactionType.USAGE,
+                CreditTransaction.description == desc,
+            )
+            .order_by(CreditTransaction.id.desc())
+        ).first()
 
-        if refundable_amount <= 0:
-            # Nothing was previously deducted, abort refund to prevent free credit generation
+        # If no matching reservation transaction exists, abort refund
+        if not usage_tx:
             return user_credit
 
+        # Determine exact refundable amount (absolute value of reserved usage)
+        actual_deducted = abs(usage_tx.amount)
+        refundable_amount = min(reserved_credits, actual_deducted)
+
+        if refundable_amount <= 0:
+            return user_credit
+
+        # Restore exact balance and lifetime spent
         user_credit.balance += refundable_amount
-        user_credit.lifetime_spent -= refundable_amount
+        user_credit.lifetime_spent = max(
+            0, user_credit.lifetime_spent - refundable_amount
+        )
 
         session.add(user_credit)
         session.add(

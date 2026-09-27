@@ -12,6 +12,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { getTopConfig } from '@/utils/dashboard';
 import { useProcessingStore } from '../store/processing-store';
 import { useDashboardResults } from '@/hooks/useDashboardResults';
+import { useEvaluationJobStatus } from '@/hooks/useEvaluationJobStatus'; // 1. Import hook
 import useAuthStore from '@/store/store';
 
 type DashboardState = {
@@ -27,6 +28,7 @@ export default function Dashboard() {
 	const fileResults = fileState?.results;
 
 	const {
+		jobId,
 		isProcessing,
 		fileName: processingFileName,
 		fileSize: processingFileSize,
@@ -40,12 +42,25 @@ export default function Dashboard() {
 
 	const [activeTab, setActiveTab] = useState<'chart' | 'table'>('chart');
 	const [elapsedSeconds, setElapsedSeconds] = useState(0);
+	const fetchBalance = useAuthStore((state) => state.fetchBalance);
 
 	// Normalize router state results
 	const routerResults = useMemo(() => {
 		if (!fileResults) return null;
 		return Array.isArray(fileResults) ? fileResults : [fileResults];
 	}, [fileResults]);
+
+	// 3. Poll specific job status when a jobId exists
+	const { data: jobData, isLoading: isJobLoading } = useEvaluationJobStatus({
+		jobId: isProcessing ? jobId : null,
+		onSuccess: () => {
+			finishProcessing();
+			void fetchBalance();
+		},
+		onError: (err) => {
+			console.error('Job failed:', err);
+		},
+	});
 
 	// Timer effect for background progress tracking
 	useEffect(() => {
@@ -66,67 +81,27 @@ export default function Dashboard() {
 		return () => window.clearInterval(interval);
 	}, [isProcessing, startedAt]);
 
-	// Fetch dashboard results regardless of processing state to allow background syncing
+	// Fallback/general dashboard results query
 	const {
 		data: dashboardData,
-		isLoading,
+		isLoading: isDashboardLoading,
 		isError,
 		error: queryError,
 		refetch,
 	} = useDashboardResults({
-		enabled: !fileResults,
+		enabled: !fileResults && !jobId,
 		fallbackData: routerResults ?? [],
 	});
 
 	// Derive current dataset
 	const safeData = useMemo(() => {
 		if (routerResults) return routerResults;
+		if (jobData?.results && jobData.results.length > 0) return jobData.results;
 		if (Array.isArray(dashboardData)) return dashboardData;
 		return [];
-	}, [routerResults, dashboardData]);
+	}, [routerResults, jobData, dashboardData]);
 
-	const fetchBalance = useAuthStore((state) => state.fetchBalance);
-
-	// Auto-poll with exponential backoff & clear timeout when fulfilled
-	useEffect(() => {
-		if (!isProcessing) return;
-
-		let timeoutId: ReturnType<typeof setTimeout> | null = null;
-		let isSubscribed = true;
-		let currentDelay = 3000; // Initial delay: 3s
-		const maxDelay = 15000; // Cap delay at 15s
-
-		const poll = async () => {
-			try {
-				const { data } = await refetch();
-
-				// If request returned valid results, stop polling and finish processing
-				if (isSubscribed && data && Array.isArray(data) && data.length > 0) {
-					finishProcessing();
-					void fetchBalance();
-					return;
-				}
-			} catch (err) {
-				console.error('Error polling dashboard results:', err);
-			}
-
-			// Schedule next poll only if still processing & component is mounted
-			if (isSubscribed) {
-				currentDelay = Math.min(currentDelay * 1.5, maxDelay);
-				timeoutId = setTimeout(poll, currentDelay);
-			}
-		};
-
-		// Initial poll schedule after 3s
-		timeoutId = setTimeout(poll, currentDelay);
-
-		return () => {
-			isSubscribed = false;
-			if (timeoutId) clearTimeout(timeoutId);
-		};
-	}, [isProcessing, refetch, finishProcessing, fetchBalance]);
-
-	// Also complete processing & update credits if data populates via router state or initial query
+	// Also complete processing if data populates via router state or job polling
 	useEffect(() => {
 		if (isProcessing && safeData.length > 0) {
 			finishProcessing();
@@ -134,9 +109,12 @@ export default function Dashboard() {
 		}
 	}, [isProcessing, safeData.length, finishProcessing, fetchBalance]);
 
-	const loading = isLoading && safeData.length === 0;
+	const loading = (isDashboardLoading || isJobLoading) && safeData.length === 0;
 
 	const error = useMemo(() => {
+		if (jobData?.status === 'failed') {
+			return jobData.error || 'Evaluation job failed.';
+		}
 		if (isError && queryError) {
 			return queryError instanceof Error
 				? queryError.message
@@ -146,7 +124,7 @@ export default function Dashboard() {
 			return 'No benchmark results available yet.';
 		}
 		return null;
-	}, [isError, queryError, fileResults, safeData.length]);
+	}, [isError, queryError, fileResults, safeData.length, jobData]);
 
 	const topConfig = getTopConfig(safeData);
 	const activeFileName = fileState?.fileName ?? processingFileName;

@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import api from '@/api/axios';
+import { useProcessingStore } from '@/store/processing-store';
 import type { EvaluationPreset } from '@/types/evaluation';
 
 interface EvaluatePdfParams {
@@ -10,6 +11,8 @@ interface EvaluatePdfParams {
 	selectedLlms: string[];
 	selectedEmbeddings: string[];
 	evaluationMode: EvaluationPreset;
+	totalRuns?: number;
+	estimatedSeconds?: number;
 }
 
 interface JobEnqueueResponse {
@@ -20,6 +23,7 @@ interface JobEnqueueResponse {
 
 export function useEvaluatePdf() {
 	const abortControllerRef = useRef<AbortController | null>(null);
+	const startProcessing = useProcessingStore((state) => state.startProcessing);
 
 	const cancel = () => {
 		abortControllerRef.current?.abort();
@@ -54,8 +58,18 @@ export function useEvaluatePdf() {
 
 			return response.data;
 		},
-		onSuccess: () => {
+		onSuccess: (data, variables) => {
 			abortControllerRef.current = null;
+
+			// Automatically populate store with job_id and parameters
+			const fileSizeInMb = (variables.file.size / (1024 * 1024)).toFixed(2);
+			startProcessing({
+				jobId: data.job_id,
+				fileName: variables.file.name,
+				fileSize: `${fileSizeInMb} MB`,
+				totalRuns: variables.totalRuns,
+				estimatedSeconds: variables.estimatedSeconds,
+			});
 		},
 		onError: () => {
 			abortControllerRef.current = null;

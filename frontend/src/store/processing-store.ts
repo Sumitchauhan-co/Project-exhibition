@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 interface StartProcessingParams {
+	jobId: string;
 	fileName: string;
 	fileSize: string;
 	totalRuns?: number;
@@ -9,6 +10,7 @@ interface StartProcessingParams {
 }
 
 interface ProcessingState {
+	jobId: string | null;
 	isProcessing: boolean;
 	fileName: string | null;
 	fileSize: string | null;
@@ -29,6 +31,7 @@ const DEFAULT_STEPS = [
 ];
 
 export const useProcessingStore = create<ProcessingState>((set) => ({
+	jobId: null,
 	isProcessing: false,
 	fileName: null,
 	fileSize: null,
@@ -38,6 +41,7 @@ export const useProcessingStore = create<ProcessingState>((set) => ({
 	statusSteps: DEFAULT_STEPS,
 
 	startProcessing: ({
+		jobId,
 		fileName,
 		fileSize,
 		totalRuns = 5,
@@ -45,6 +49,7 @@ export const useProcessingStore = create<ProcessingState>((set) => ({
 		statusSteps = DEFAULT_STEPS,
 	}) =>
 		set({
+			jobId,
 			isProcessing: true,
 			fileName,
 			fileSize,
@@ -61,6 +66,7 @@ export const useProcessingStore = create<ProcessingState>((set) => ({
 
 	cancelCurrentEvaluation: () =>
 		set({
+			jobId: null,
 			isProcessing: false,
 			fileName: null,
 			fileSize: null,

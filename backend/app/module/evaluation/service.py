@@ -211,15 +211,11 @@ class AgenticChunkSplitter:
             return [False] * len(sentences)
 
     def split_documents(self, documents: List[Document]) -> List[Document]:
-        if (
-            self.user_credit_balance is not None
-            and self.estimated_credits is not None
-            and self.estimated_credits > self.user_credit_balance
-        ):
-            raise PermissionError(
-                f"Insufficient credits: Execution requires {self.estimated_credits} credits, "
-                f"but balance is {self.user_credit_balance} credits."
-            )
+        emit_eval_log(
+            "agentic_split_started",
+            user_credit_balance=self.user_credit_balance,
+            estimated_credits=self.estimated_credits,
+        )
 
         chunked_docs = []
         llm_call_count = 0
