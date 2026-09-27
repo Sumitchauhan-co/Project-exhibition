@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import useAuthStore from '../../store/store';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
+import { Link } from 'react-router-dom';
+import { User, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 
 interface SignUpFormProps {
 	onSuccess?: () => void;
@@ -72,112 +74,174 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({
 	};
 
 	return (
-		<div className="mx-auto w-full max-w-md rounded-xl border border-zinc-200 bg-white p-4 shadow-md transition-all dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-			<div className="mb-6 text-center">
-				<h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
-					Create Account
+		<div className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200/80 bg-white/95 p-6 shadow-xl shadow-indigo-500/5 backdrop-blur-xl transition-all dark:border-zinc-800/80 dark:bg-zinc-900/90 sm:p-8">
+			{/* Ambient Background Glow */}
+			<div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl" />
+			<div className="pointer-events-none absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl" />
+
+			{/* Header */}
+			<div className="relative mb-6 text-center">
+				<h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">
+					Create account
 				</h2>
-				<p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-					Get started with your free account today.
+				<p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 sm:text-sm">
+					Start evaluating RAG chunking strategies today
 				</p>
 			</div>
 
+			{/* Error Banner */}
 			{error && (
-				<div className="mb-4 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900 rounded-lg">
-					{error}
+				<div className="mb-5 flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50/80 p-3.5 text-xs font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
+					<AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+					<span>{error}</span>
 				</div>
 			)}
 
-			<div className="mb-4 flex justify-center w-full">
+			{/* Google Sign Up Wrapper */}
+			<div className="mb-5 flex justify-center w-full">
 				<GoogleLogin
 					onSuccess={handleGoogleSuccess}
 					onError={() => setError('Google Authentication Failed')}
 					useOneTap
 					width="100%"
+					theme="outline"
+					shape="pill"
 				/>
 			</div>
 
+			{/* Divider */}
 			<div className="relative my-6">
 				<div className="absolute inset-0 flex items-center">
 					<div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
 				</div>
-				<div className="relative flex justify-center text-xs uppercase">
-					<span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500 dark:text-zinc-400">
-						Or continue with
+				<div className="relative flex justify-center text-xs tracking-wider uppercase">
+					<span className="bg-white dark:bg-zinc-900 px-3 text-zinc-400 dark:text-zinc-500 font-semibold">
+						or sign up with email
 					</span>
 				</div>
 			</div>
 
+			{/* Registration Form */}
 			<form
 				onSubmit={handleSubmit}
 				className="space-y-4"
 			>
 				<div>
-					<label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+					<label className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5">
 						Full Name
 					</label>
-					<input
-						type="text"
-						required
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						placeholder="John Doe"
-						className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-					/>
+					<div className="relative">
+						<div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-400">
+							<User className="h-4 w-4" />
+						</div>
+						<input
+							type="text"
+							required
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							placeholder="John Doe"
+							className="w-full rounded-xl border border-zinc-300/80 bg-zinc-50/50 pl-10 pr-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition-all duration-150 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-white dark:placeholder-zinc-500 dark:focus:border-indigo-400 dark:focus:bg-zinc-800 dark:focus:ring-indigo-400/10"
+						/>
+					</div>
 				</div>
 
 				<div>
-					<label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-						Email
+					<label className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5">
+						Email Address
 					</label>
-					<input
-						type="email"
-						required
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
-						placeholder="you@example.com"
-						className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-					/>
+					<div className="relative">
+						<div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-400">
+							<Mail className="h-4 w-4" />
+						</div>
+						<input
+							type="email"
+							required
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							placeholder="you@example.com"
+							className="w-full rounded-xl border border-zinc-300/80 bg-zinc-50/50 pl-10 pr-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition-all duration-150 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-white dark:placeholder-zinc-500 dark:focus:border-indigo-400 dark:focus:bg-zinc-800 dark:focus:ring-indigo-400/10"
+						/>
+					</div>
 				</div>
 
 				<div>
-					<label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+					<label className="block text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5">
 						Password
 					</label>
-					<input
-						type="password"
-						required
-						value={password}
-						onChange={(e) => setPassword(e.target.value)}
-						placeholder="••••••••"
-						className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-					/>
+					<div className="relative">
+						<div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-400">
+							<Lock className="h-4 w-4" />
+						</div>
+						<input
+							type="password"
+							required
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							placeholder="••••••••"
+							className="w-full rounded-xl border border-zinc-300/80 bg-zinc-50/50 pl-10 pr-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition-all duration-150 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-zinc-700/80 dark:bg-zinc-800/50 dark:text-white dark:placeholder-zinc-500 dark:focus:border-indigo-400 dark:focus:bg-zinc-800 dark:focus:ring-indigo-400/10"
+						/>
+					</div>
 				</div>
 
 				<button
 					type="submit"
 					disabled={isLoading}
-					className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-150 flex justify-center items-center"
+					className="group relative w-full overflow-hidden rounded-xl bg-indigo-600 py-3 px-4 text-sm font-semibold text-white shadow-md shadow-indigo-600/20 transition-all duration-200 hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-600/30 active:scale-[0.99] disabled:bg-indigo-400 disabled:cursor-not-allowed cursor-pointer"
 				>
 					{isLoading ? (
-						<span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+						<div className="flex items-center justify-center gap-2">
+							<span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+							<span>Creating account...</span>
+						</div>
 					) : (
-						'Sign Up'
+						<div className="flex items-center justify-center gap-2">
+							<span>Create Free Account</span>
+							<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+						</div>
 					)}
 				</button>
 			</form>
 
+			{/* Navigation link */}
 			{onNavigateToSignIn && (
-				<p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
+				<p className="mt-5 text-center text-xs text-zinc-500 dark:text-zinc-400">
 					Already have an account?{' '}
 					<button
 						onClick={onNavigateToSignIn}
-						className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 hover:underline focus:outline-none"
+						className="font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline focus:outline-none cursor-pointer"
 					>
 						Sign in
 					</button>
 				</p>
 			)}
+
+			{/* Terms & Legal Notice Disclaimer */}
+			<div className="mt-6 border-t border-zinc-100 dark:border-zinc-800/80 pt-4 text-center">
+				<p className="text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+					By continuing, you agree to our{' '}
+					<Link
+						to="/terms-of-service"
+						className="text-zinc-600 dark:text-zinc-400 underline hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+					>
+						Terms of Service
+					</Link>
+					,{' '}
+					<Link
+						to="/privacy-policy"
+						className="text-zinc-600 dark:text-zinc-400 underline hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+					>
+						Privacy Policy
+					</Link>
+					, and{' '}
+					<Link
+						to="/cancellation-and-refund"
+						className="text-zinc-600 dark:text-zinc-400 underline hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+					>
+						Cancellation & Refund Policy
+					</Link>
+					.
+				</p>
+			</div>
 		</div>
 	);
 };
