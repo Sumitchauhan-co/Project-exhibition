@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
-import useAuthStore from '../../store/store';
+import useAuthStore from '@/store/store';
 
 export const SignOutButton: React.FC = () => {
 	const [isLoading, setIsLoading] = useState(false);

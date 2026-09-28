@@ -43,16 +43,34 @@ from app.common.utils.exceptions import (
 from app.module.auth.deps import get_current_user
 from app.module.auth.model import User
 from app.module.billing.service import BillingService
-from app.module.evaluation.model import EvaluationResultItem, EvaluationRun, JobStatus
+from app.module.evaluation.model import (
+    EvaluationResultItem,
+    EvaluationRun,
+    JobStatus,
+)
 from app.module.evaluation.service import RAGBenchmarkEngine
+from app.module.notification.model import (
+    NotificationCreate,
+    NotificationType,
+)
+from app.module.notification.service import NotificationService
 
 router = APIRouter(prefix="/evaluation", tags=["Evaluation"])
 
 logger = logging.getLogger(__name__)
 
+
 LATEST_EVALUATION_RESULTS: dict[int, dict] = {}
 
-VALID_STRATEGIES = {"recursive", "fixed", "token", "semantic", "agentic"}
+
+VALID_STRATEGIES = {
+    "recursive",
+    "fixed",
+    "token",
+    "semantic",
+    "agentic",
+}
+
 
 EVALUATION_MODE_PRESETS = {
     "fast": {
@@ -101,20 +119,25 @@ def parse_string_list(raw_input: Optional[str]) -> List[str]:
         return []
 
     parsed_items: List[str] = []
+
     try:
         parsed = json.loads(raw_input)
+
         if isinstance(parsed, str):
             parsed_items = [
                 clean_string_item(s) for s in parsed.split(",") if clean_string_item(s)
             ]
+
         elif isinstance(parsed, list):
             parsed_items = [
                 clean_string_item(str(s)) for s in parsed if clean_string_item(str(s))
             ]
+
         else:
             raise MalformedJSONException(
                 message="Expected field to be a JSON array or a string."
             )
+
     except (json.JSONDecodeError, TypeError):
         parsed_items = [
             clean_string_item(s) for s in raw_input.split(",") if clean_string_item(s)
@@ -125,6 +148,7 @@ def parse_string_list(raw_input: Optional[str]) -> List[str]:
 
 def resolve_evaluation_modes(evaluation_mode: Optional[str]) -> dict:
     selected_mode = (evaluation_mode or "fast").strip().lower()
+
     if selected_mode not in EVALUATION_MODE_PRESETS:
         raise HTTPException(
             status_code=400,
@@ -133,7 +157,11 @@ def resolve_evaluation_modes(evaluation_mode: Optional[str]) -> dict:
                 "allowed": list(EVALUATION_MODE_PRESETS.keys()),
             },
         )
-    return {"evaluation_mode": selected_mode, **EVALUATION_MODE_PRESETS[selected_mode]}
+
+    return {
+        "evaluation_mode": selected_mode,
+        **EVALUATION_MODE_PRESETS[selected_mode],
+    }
 
 
 def _run_matrix_evaluations(
@@ -148,7 +176,9 @@ def _run_matrix_evaluations(
     estimated_credits: Optional[int] = None,
 ) -> List[dict]:
     """Blocking worker function executed in background thread."""
+
     matrix_start = time.perf_counter()
+
     engine = RAGBenchmarkEngine(
         pdf_bytes=pdf_bytes,
         filename=filename,
@@ -156,6 +186,7 @@ def _run_matrix_evaluations(
         answer_mode=evaluation_modes["answer_mode"],
         retriever_mode=evaluation_modes["retriever_mode"],
     )
+
     matrix_results = []
 
     try:
@@ -164,6 +195,7 @@ def _run_matrix_evaluations(
                 try:
                     if strat == "agentic":
                         primary_llm = selected_llms[0] if selected_llms else None
+
                         retriever, embed_fn = engine.get_retriever_for_config(
                             strat,
                             embed_model,
@@ -171,6 +203,7 @@ def _run_matrix_evaluations(
                             user_credit_balance=user_credit_balance,
                             estimated_credits=estimated_credits,
                         )
+
                     else:
                         retriever, embed_fn = engine.get_retriever_for_config(
                             strat,
@@ -178,6 +211,7 @@ def _run_matrix_evaluations(
                             user_credit_balance=user_credit_balance,
                             estimated_credits=estimated_credits,
                         )
+
                 except Exception as embed_err:
                     for llm in selected_llms:
                         matrix_results.append(
@@ -187,10 +221,14 @@ def _run_matrix_evaluations(
                                 "chunking_strategy": strat,
                                 "embedding_model": embed_model,
                                 "llm_model": llm,
-                                "error": f"Vector indexing/chunking failed: {str(embed_err)}",
+                                "error": (
+                                    "Vector indexing/chunking failed: "
+                                    f"{str(embed_err)}"
+                                ),
                                 "metrics": {},
                             }
                         )
+
                     continue
 
                 for llm in selected_llms:
@@ -204,8 +242,11 @@ def _run_matrix_evaluations(
                             vector_db=active_vector_db,
                             test_dataset=None,
                         )
+
                         result["evaluation_mode"] = evaluation_modes["evaluation_mode"]
+
                         matrix_results.append(result)
+
                     except Exception as eval_err:
                         matrix_results.append(
                             {
@@ -214,10 +255,11 @@ def _run_matrix_evaluations(
                                 "chunking_strategy": strat,
                                 "embedding_model": embed_model,
                                 "llm_model": llm,
-                                "error": f"Evaluation error: {str(eval_err)}",
+                                "error": (f"Evaluation error: {str(eval_err)}"),
                                 "metrics": {},
                             }
                         )
+
                     finally:
                         gc.collect()
 
@@ -231,7 +273,9 @@ def _run_matrix_evaluations(
             runs=len(matrix_results),
             duration_ms=elapsed_ms(matrix_start),
         )
+
         return matrix_results
+
     finally:
         engine._retriever_cache.clear()
         del engine
@@ -252,19 +296,34 @@ def process_evaluation_background(
     estimated_cost: float,
 ):
     """Background execution task to run evaluation matrix and persist results."""
+
     from app.common.db.database import engine as db_engine
 
     with Session(db_engine) as session:
         statement = select(EvaluationRun).where(EvaluationRun.job_id == job_id)
+
         eval_run = session.exec(statement).first()
+
         if not eval_run:
+            logger.error(
+                "evaluation.job_not_found job_id=%s user_id=%s",
+                job_id,
+                user_id,
+            )
             return
 
         try:
+            # ---------------------------------------------------------
+            # 1. Mark evaluation as processing
+            # ---------------------------------------------------------
             eval_run.status = JobStatus.PROCESSING
+
             session.add(eval_run)
             session.commit()
 
+            # ---------------------------------------------------------
+            # 2. Run evaluation matrix
+            # ---------------------------------------------------------
             matrix_results = _run_matrix_evaluations(
                 contents,
                 filename,
@@ -277,28 +336,86 @@ def process_evaluation_background(
                 estimated_cost,
             )
 
+            # ---------------------------------------------------------
+            # 3. Persist evaluation results
+            # ---------------------------------------------------------
             eval_run.total_runs = len(matrix_results)
             eval_run.status = JobStatus.COMPLETED
 
             for res in matrix_results:
                 result_item = EvaluationResultItem(
                     evaluation_run_id=eval_run.id,
-                    chunking_strategy=res.get("chunking_strategy", ""),
-                    embedding_model=res.get("embedding_model", ""),
-                    llm_model=res.get("llm_model", ""),
-                    environment=res.get("environment", APP_ENV),
-                    vector_db=res.get("vector_db", active_vector_db),
+                    chunking_strategy=res.get(
+                        "chunking_strategy",
+                        "",
+                    ),
+                    embedding_model=res.get(
+                        "embedding_model",
+                        "",
+                    ),
+                    llm_model=res.get(
+                        "llm_model",
+                        "",
+                    ),
+                    environment=res.get(
+                        "environment",
+                        APP_ENV,
+                    ),
+                    vector_db=res.get(
+                        "vector_db",
+                        active_vector_db,
+                    ),
                     evaluation_mode=res.get(
-                        "evaluation_mode", evaluation_modes["evaluation_mode"]
+                        "evaluation_mode",
+                        evaluation_modes["evaluation_mode"],
                     ),
                     latency_ms=res.get("latency_ms"),
                     error=res.get("error"),
                     metrics=res.get("metrics", {}),
                 )
+
                 session.add(result_item)
 
             session.commit()
 
+            # ---------------------------------------------------------
+            # 4. SUCCESS NOTIFICATION
+            # ---------------------------------------------------------
+            #
+            # The evaluation has already been committed successfully.
+            # If Firebase fails, the evaluation must remain COMPLETED.
+            #
+            try:
+                NotificationService.create(
+                    session=session,
+                    user_id=user_id,
+                    data=NotificationCreate(
+                        title="Evaluation completed",
+                        message=(
+                            f'Your evaluation for "{filename}" '
+                            "has completed successfully. "
+                            "Your results are ready to view."
+                        ),
+                        type=NotificationType.SUCCESS,
+                    ),
+                )
+
+                logger.info(
+                    "evaluation.success_notification_created " "job_id=%s user_id=%s",
+                    job_id,
+                    user_id,
+                )
+
+            except Exception:
+                logger.exception(
+                    "evaluation.success_notification_failed " "job_id=%s user_id=%s",
+                    job_id,
+                    user_id,
+                )
+
+            # ---------------------------------------------------------
+            # 5. Store latest successful evaluation in memory
+            # ---------------------------------------------------------
             payload = {
                 "job_id": job_id,
                 "user_id": user_id,
@@ -309,22 +426,91 @@ def process_evaluation_background(
                 "total_runs": len(matrix_results),
                 "results": matrix_results,
             }
-            store_latest_evaluation_results(user_id, payload)
+
+            store_latest_evaluation_results(
+                user_id,
+                payload,
+            )
+
+            logger.info(
+                "evaluation.completed " "job_id=%s user_id=%s runs=%s",
+                job_id,
+                user_id,
+                len(matrix_results),
+            )
 
         except Exception as e:
+            # ---------------------------------------------------------
+            # 6. Mark evaluation as failed
+            # ---------------------------------------------------------
             session.rollback()
+
             eval_run.status = JobStatus.FAILED
             eval_run.error_message = str(e)
+
             session.add(eval_run)
             session.commit()
 
+            # ---------------------------------------------------------
+            # 7. Refund evaluation credits
+            # ---------------------------------------------------------
             BillingService.refund_credits_for_evaluation(
                 session=session,
                 user_id=user_id,
                 required_credits=estimated_cost,
-                context=f"{filename} (Fatal system failure: {str(e)})",
+                context=(f"{filename} " f"(Fatal system failure: {str(e)})"),
             )
+
+            # ---------------------------------------------------------
+            # 8. FAILURE NOTIFICATION
+            # ---------------------------------------------------------
+            #
+            # Do not send the raw exception to the user.
+            # Keep technical details in server logs.
+            #
+            try:
+                NotificationService.create(
+                    session=session,
+                    user_id=user_id,
+                    data=NotificationCreate(
+                        title="Evaluation failed",
+                        message=(
+                            f'Your evaluation for "{filename}" '
+                            "could not be completed. "
+                            "Your credits have been refunded. "
+                            "Please try again."
+                        ),
+                        type=NotificationType.ERROR,
+                    ),
+                )
+
+                logger.info(
+                    "evaluation.failure_notification_created " "job_id=%s user_id=%s",
+                    job_id,
+                    user_id,
+                )
+
+            except Exception:
+                # Notification failure must never hide the
+                # original evaluation failure.
+                logger.exception(
+                    "evaluation.failure_notification_failed " "job_id=%s user_id=%s",
+                    job_id,
+                    user_id,
+                )
+
+            # ---------------------------------------------------------
+            # 9. Log original evaluation error
+            # ---------------------------------------------------------
+            logger.exception(
+                "evaluation.failed " "job_id=%s user_id=%s filename=%s",
+                job_id,
+                user_id,
+                filename,
+            )
+
             traceback.print_exc()
+
         finally:
             gc.collect()
 
@@ -335,12 +521,14 @@ async def get_matrix_results(
     session: Session = Depends(get_session),
 ):
     """Return the latest successful evaluation matrix for the current user from database."""
+
     statement = (
         select(EvaluationRun)
         .where(EvaluationRun.user_id == current_user.id)
         .where(EvaluationRun.status == JobStatus.COMPLETED)
         .order_by(EvaluationRun.created_at.desc())
     )
+
     latest_run = session.exec(statement).first()
 
     if latest_run:
@@ -358,6 +546,7 @@ async def get_matrix_results(
             }
             for item in latest_run.results
         ]
+
         return {
             "job_id": latest_run.job_id,
             "user_id": current_user.id,
@@ -368,15 +557,29 @@ async def get_matrix_results(
         }
 
     cached = LATEST_EVALUATION_RESULTS.get(
-        current_user.id, {"results": [], "total_runs": 0}
+        current_user.id,
+        {
+            "results": [],
+            "total_runs": 0,
+        },
     )
+
     return {
         "job_id": cached.get("job_id"),
         "user_id": current_user.id,
         "filename": cached.get("filename"),
-        "estimated_credits": cached.get("estimated_credits", 0),
-        "total_runs": cached.get("total_runs", len(cached.get("results", []))),
-        "results": cached.get("results", []),
+        "estimated_credits": cached.get(
+            "estimated_credits",
+            0,
+        ),
+        "total_runs": cached.get(
+            "total_runs",
+            len(cached.get("results", [])),
+        ),
+        "results": cached.get(
+            "results",
+            [],
+        ),
     }
 
 
@@ -387,15 +590,20 @@ async def get_job_status(
     session: Session = Depends(get_session),
 ):
     """Poll evaluation job progress and retrieve completed result matrix."""
+
     statement = (
         select(EvaluationRun)
         .where(EvaluationRun.job_id == job_id)
         .where(EvaluationRun.user_id == current_user.id)
     )
+
     eval_run = session.exec(statement).first()
 
     if not eval_run:
-        raise HTTPException(status_code=404, detail="Evaluation job not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Evaluation job not found.",
+        )
 
     if eval_run.status != JobStatus.COMPLETED:
         return {
@@ -443,59 +651,116 @@ async def evaluate_uploaded_pdf(
     session: Session = Depends(get_session),
 ):
     """Enqueues PDF evaluation as an asynchronous background job and immediately returns job_id."""
+
     request_start = time.perf_counter()
     estimated_cost = 0
+
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise InvalidFileException()
 
+    # -------------------------------------------------------------
+    # Parse strategies
+    # -------------------------------------------------------------
     parsed_strategies = parse_string_list(strategies)
+
     if parsed_strategies:
         invalid_strats = [s for s in parsed_strategies if s not in VALID_STRATEGIES]
+
         if invalid_strats:
             raise InvalidStrategyException(
                 invalid_strategies=invalid_strats,
                 allowed=list(VALID_STRATEGIES),
             )
+
         selected_strategies = parsed_strategies
+
     else:
         selected_strategies = ["recursive"]
 
+    # -------------------------------------------------------------
+    # Parse LLM models
+    # -------------------------------------------------------------
     parsed_llms = parse_string_list(llm_models)
+
     if parsed_llms:
         selected_llms = parsed_llms
+
     else:
         if APP_ENV == "prod":
             selected_llms = [
-                item for item in [PROD_LLM_MODEL_1, PROD_LLM_MODEL_2] if item
-            ]
-        else:
-            selected_llms = [
-                item for item in [DEV_LLM_MODEL_1, DEV_LLM_MODEL_2] if item
+                item
+                for item in [
+                    PROD_LLM_MODEL_1,
+                    PROD_LLM_MODEL_2,
+                ]
+                if item
             ]
 
+        else:
+            selected_llms = [
+                item
+                for item in [
+                    DEV_LLM_MODEL_1,
+                    DEV_LLM_MODEL_2,
+                ]
+                if item
+            ]
+
+    # -------------------------------------------------------------
+    # Parse embedding models
+    # -------------------------------------------------------------
     parsed_embeddings = parse_string_list(embedding_models)
+
     if parsed_embeddings:
         selected_embeddings = parsed_embeddings
+
     else:
         if APP_ENV == "prod":
             selected_embeddings = [
-                item for item in [PROD_EMBED_MODEL_1, PROD_EMBED_MODEL_2] if item
+                item
+                for item in [
+                    PROD_EMBED_MODEL_1,
+                    PROD_EMBED_MODEL_2,
+                ]
+                if item
             ]
+
         else:
             selected_embeddings = [
-                item for item in [DEV_EMBED_MODEL_1, DEV_EMBED_MODEL_2] if item
+                item
+                for item in [
+                    DEV_EMBED_MODEL_1,
+                    DEV_EMBED_MODEL_2,
+                ]
+                if item
             ]
 
+    # -------------------------------------------------------------
+    # Resolve environment/configuration
+    # -------------------------------------------------------------
     active_vector_db = PROD_VECTOR_DB if APP_ENV == "prod" else DEV_VECTOR_DB
+
     evaluation_modes = resolve_evaluation_modes(evaluation_mode)
+
     user_id = current_user.id
-    user_credit_balance = getattr(current_user, "credit_balance", None)
+
+    user_credit_balance = getattr(
+        current_user,
+        "credit_balance",
+        None,
+    )
 
     try:
+        # ---------------------------------------------------------
+        # Read uploaded PDF
+        # ---------------------------------------------------------
         read_start = time.perf_counter()
+
         contents = await file.read()
+
         if not contents:
             raise EmptyFileException()
+
         emit_eval_log(
             "request_file_read",
             filename=file.filename,
@@ -503,6 +768,9 @@ async def evaluate_uploaded_pdf(
             duration_ms=elapsed_ms(read_start),
         )
 
+        # ---------------------------------------------------------
+        # Estimate evaluation cost
+        # ---------------------------------------------------------
         estimated_cost = BillingService.estimate_evaluation_cost(
             file_size_bytes=len(contents),
             selected_strategies=selected_strategies,
@@ -510,28 +778,44 @@ async def evaluate_uploaded_pdf(
             selected_embeddings=selected_embeddings,
         )
 
+        # ---------------------------------------------------------
+        # Reserve credits
+        # ---------------------------------------------------------
         try:
             billing_start = time.perf_counter()
+
             BillingService.reserve_credits_for_evaluation(
                 session=session,
                 user_id=user_id,
                 required_credits=estimated_cost,
-                context=f"{file.filename} ({len(selected_strategies)} strategies, {len(selected_llms)} LLMs, {len(selected_embeddings)} embeddings)",
+                context=(
+                    f"{file.filename} "
+                    f"({len(selected_strategies)} strategies, "
+                    f"{len(selected_llms)} LLMs, "
+                    f"{len(selected_embeddings)} embeddings)"
+                ),
             )
+
             emit_eval_log(
                 "billing_reserved",
                 user_id=user_id,
                 credits=estimated_cost,
                 duration_ms=elapsed_ms(billing_start),
             )
+
         except HTTPException:
             raise
+
         except Exception:
             raise EvaluationProcessingException(
-                details="Unable to reserve credits for this run."
+                details=("Unable to reserve credits for this run.")
             )
 
+        # ---------------------------------------------------------
+        # Create evaluation job
+        # ---------------------------------------------------------
         job_id = str(uuid.uuid4())
+
         eval_run = EvaluationRun(
             job_id=job_id,
             user_id=user_id,
@@ -541,9 +825,13 @@ async def evaluate_uploaded_pdf(
             estimated_credits=estimated_cost,
             status=JobStatus.PENDING,
         )
+
         session.add(eval_run)
         session.commit()
 
+        # ---------------------------------------------------------
+        # Start background evaluation
+        # ---------------------------------------------------------
         background_tasks.add_task(
             process_evaluation_background,
             job_id=job_id,
@@ -573,6 +861,9 @@ async def evaluate_uploaded_pdf(
             "status": JobStatus.PENDING,
         }
 
+    # -------------------------------------------------------------
+    # Expected validation errors
+    # -------------------------------------------------------------
     except (
         InvalidFileException,
         EmptyFileException,
@@ -580,13 +871,20 @@ async def evaluate_uploaded_pdf(
         MalformedJSONException,
     ):
         raise
+
+    # -------------------------------------------------------------
+    # Fatal request-level failure
+    # -------------------------------------------------------------
     except Exception as e:
         session.rollback()
+
         BillingService.refund_credits_for_evaluation(
             session=session,
             user_id=user_id,
             required_credits=estimated_cost,
-            context=f"{file.filename} (Fatal system failure: {str(e)})",
+            context=(f"{file.filename} " f"(Fatal system failure: {str(e)})"),
         )
+
         traceback.print_exc()
+
         raise EvaluationProcessingException(details=str(e))

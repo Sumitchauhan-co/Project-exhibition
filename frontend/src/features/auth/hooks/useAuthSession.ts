@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import api from '@/api/axios';
 import useAuthStore from '@/store/store';
-import type { User } from '@/types/user';
+import type { User } from '@/features/auth/types/user';
 
 export function useAuthSession() {
 	return useQuery({

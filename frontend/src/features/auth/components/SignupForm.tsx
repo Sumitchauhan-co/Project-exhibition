@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import useAuthStore from '../../store/store';
+import useAuthStore from '../../../store/store';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';

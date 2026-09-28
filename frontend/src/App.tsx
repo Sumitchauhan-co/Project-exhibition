@@ -11,11 +11,11 @@ import {
 } from 'chart.js';
 import { ThemeProvider } from './components/theme-provider';
 import { AppRoutes } from './routes/AppRoute';
-import { AnalyticsTracker } from './components/AnalyticsTracker';
+import { AnalyticsTracker } from './features/analytics/hooks/AnalyticsTracker';
 // import { LoadingSpinner } from './components/LoadingSpinner';
-import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { CookieConsentBanner } from './features/analytics/components/CookieConsentBanner';
 import { Toaster } from './components/ui/toast';
-import { useAuthSession } from './hooks/useAuthSession';
+import { useAuthSession } from './features/auth/hooks/useAuthSession';
 import { InitialLoader } from './components/InitialLoader';
 
 ChartJS.register(

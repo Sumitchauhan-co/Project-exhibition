@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { ModeToggle } from './mode-toggle';
 import useAuthStore from '../store/store';
-import { SignOutButton } from './auth/SignoutButton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +20,7 @@ import {
 	PopoverTrigger,
 } from '@/components/ui/popover';
 import { formatMemberSinceDate } from '../utils/date';
+import { SignOutButton } from '@/features/auth/components/SignoutButton';
 
 const navItems = [
 	{ name: 'Home', path: '/', icon: Home },

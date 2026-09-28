@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Award, Cpu, Database, Loader2 } from 'lucide-react';
-import { type PipelineResult } from '../../types/evaluation';
+import type { PipelineResult } from '@/types/evaluation';
 
 interface MetricCardsProps {
 	data: PipelineResult[];

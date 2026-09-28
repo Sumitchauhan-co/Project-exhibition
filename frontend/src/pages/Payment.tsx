@@ -10,17 +10,20 @@ import {
 } from 'lucide-react';
 
 import { Button } from '../components/ui/button';
-import { PaymentButton } from '../components/payments/PaymentButton';
+import { PaymentButton } from '../features/payments/components/PaymentButton';
 import { PAYMENT_PACKAGES } from '../services/payment';
-import { useCreditBalance } from '@/hooks/useCreditBalance';
-import { usePaymentGuard } from '@/hooks/usePaymentGuard';
+import { useCreditBalance } from '@/features/payments/hooks/useCreditBalance';
+import { usePaymentGuard } from '@/features/payments/hooks/usePaymentGuard';
 
 export default function PaymentPage() {
 	const [customCredits, setCustomCredits] = useState('500');
 	const [customPaymentSuccess, setCustomPaymentSuccess] = useState(false);
 	const creditGuard = usePaymentGuard();
-	const { data: balance = 0, isLoading: isLoadingBalance, refetch: fetchBalance } =
-		useCreditBalance();
+	const {
+		data: balance = 0,
+		isLoading: isLoadingBalance,
+		refetch: fetchBalance,
+	} = useCreditBalance();
 
 	const customCreditsValue = Number(customCredits) || 0;
 	const customAmount = useMemo(() => {

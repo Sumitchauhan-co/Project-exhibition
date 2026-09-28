@@ -2,17 +2,17 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { HomeHeader } from '../components/home/HomeHeader';
-import { Dropzone } from '../components/home/Dropzone';
-import { ChunkingStrategySelector } from '../components/home/ChunkingStrategySelector';
-import { EvaluationModeSelector } from '../components/home/EvaluationModeSelector';
+import { HomeHeader } from '../features/home/components/HomeHeader';
+import { Dropzone } from '../features/home/components/Dropzone';
+import { EvaluationModeSelector } from '../features/home/components/EvaluationModeSelector';
 import { Button } from '../components/ui/button';
-import { SelectedFileCard } from '../components/home/SelectedFileCard';
-import { useEvaluatePdf } from '../hooks/useEvaluatePdf';
+import { SelectedFileCard } from '../features/home/components/SelectedFileCard';
+import { useEvaluatePdf } from '../features/home/hooks/useEvaluatePdf';
 import { useProcessingStore } from '../store/processing-store';
 import useAuthStore from '../store/store';
 import { toast } from '../components/ui/toast';
 import type { EvaluationPreset } from '@/types/evaluation';
+import { ChunkingStrategySelector } from '@/features/home/components/ChunkingStrategySelector';
 
 const DEFAULT_EVALUATION_STEPS = [
 	'Preparing document',

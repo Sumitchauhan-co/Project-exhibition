@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 import { toast } from '../components/ui/toast';
-import { persistPaymentGuard } from '../hooks/usePaymentGuard';
+import { persistPaymentGuard } from '../features/payments/hooks/usePaymentGuard';
 import useAuthStore from '../store/store';
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1`;

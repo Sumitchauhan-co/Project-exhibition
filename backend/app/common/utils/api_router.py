@@ -5,6 +5,7 @@ from app.module.billing.route import router as billing_router
 from app.module.contact.route import router as contact_router
 from app.module.evaluation.route import router as evaluation_router
 from app.module.config.route import router as config_router
+from app.module.notification.route import router as notification_router
 
 api_v1_router = APIRouter()
 
@@ -14,3 +15,4 @@ api_v1_router.include_router(auth_router)
 api_v1_router.include_router(billing_router)
 api_v1_router.include_router(contact_router)
 api_v1_router.include_router(config_router)
+api_v1_router.include_router(notification_router)

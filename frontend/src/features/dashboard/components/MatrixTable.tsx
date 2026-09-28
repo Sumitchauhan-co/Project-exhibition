@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
-import { type PipelineResult } from '../../types/evaluation';
+import type { PipelineResult } from '@/types/evaluation';
 
 interface MatrixTableProps {
 	data: PipelineResult[];

@@ -1,6 +1,6 @@
+import { SignInForm } from '@/features/auth/components/SigninForm';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SignInForm } from '../components/auth/SigninForm';
 
 export const SignInPage: React.FC = () => {
 	const navigate = useNavigate();

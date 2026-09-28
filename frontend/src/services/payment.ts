@@ -3,7 +3,7 @@ import type {
 	CreditBalanceResponse,
 	PaymentOrderResponse,
 	PaymentPackageOption,
-} from '../types/payment';
+} from '../features/payments/types/payment';
 
 interface RazorpaySuccessResponse {
 	razorpay_payment_id: string;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import type { PaymentGuardDetail } from '@/types/payment';
+import type { PaymentGuardDetail } from '@/features/payments/types/payment';
 
 const PAYMENT_GUARD_KEY = 'payment_guard_reason';
 

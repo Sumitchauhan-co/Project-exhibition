@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCw, Upload } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 
 interface DashboardHeaderProps {
 	loading?: boolean;

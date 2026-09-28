@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { CheckCircle2, CreditCard, Loader2 } from 'lucide-react';
 
-import { Button } from '../ui/button';
+import { Button } from '../../../components/ui/button';
 import {
 	createBillingOrder,
 	openPaymentCheckout,
-} from '../../services/payment';
+} from '../../../services/payment';
 
 interface PaymentButtonProps {
 	packageId?: string;
