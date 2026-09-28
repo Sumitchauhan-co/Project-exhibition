@@ -22,7 +22,7 @@ export function Banner({ onDismiss }: ServerResourceWarningBannerProps) {
 					<AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
 					<p className="text-xs font-medium leading-normal sm:text-sm">
 						<span className="font-semibold">Resource Notice:</span> Due to
-						memory limitations on the free server tier, large evaluations may
+						memory limitations on the free server tier, evaluations may
 						encounter unexpected failures or timeouts.
 					</p>
 				</div>

@@ -97,7 +97,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenCookieSettings }) => {
 				},
 				{
 					label: 'LinkedIn',
-					href: 'https://linkedin.com',
+					href: 'https://www.linkedin.com/in/sumit-chauhan-10679a384',
 					icon: Briefcase,
 					isExternal: true,
 				},
