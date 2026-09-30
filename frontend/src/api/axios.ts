@@ -47,7 +47,10 @@ const getSuccessMessage = (config: {
 		return 'Payment request processed successfully.';
 	if (url.includes('/contact/submit'))
 		return 'Your message has been sent successfully.';
-	if (url.includes('/evaluation')) return 'Benchmark analysis has started.';
+
+	// Specific check for initiating an evaluation run
+	if (url.includes('/evaluation/evaluate-pdf') && method === 'POST')
+		return 'Benchmark analysis has started.';
 
 	return null;
 };
