@@ -36,6 +36,8 @@ dependencies = [
     "sentence-transformers>=6.0.1",
     "sqladmin>=0.31.1",
     "sqlmodel>=0.0.42",
+    "torch",
+    "torchvision",
     "uvicorn>=0.52.4",
 ]
 
@@ -43,3 +45,12 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
