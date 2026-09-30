@@ -50,7 +50,7 @@ class NotificationService:
             session.refresh(existing)
 
             logger.info(
-                "notification.device_registered " "user_id=%s device_id=%s platform=%s",
+                "notification.device_registered user_id=%s device_id=%s platform=%s",
                 user_id,
                 existing.id,
                 data.platform.value,
@@ -71,7 +71,7 @@ class NotificationService:
         session.refresh(device)
 
         logger.info(
-            "notification.device_created " "user_id=%s device_id=%s platform=%s",
+            "notification.device_created user_id=%s device_id=%s platform=%s",
             user_id,
             device.id,
             data.platform.value,
@@ -104,7 +104,7 @@ class NotificationService:
         session.refresh(notification)
 
         logger.info(
-            "notification.created " "notification_id=%s user_id=%s type=%s",
+            "notification.created notification_id=%s user_id=%s type=%s",
             notification.id,
             user_id,
             notification.type.value,
@@ -162,15 +162,12 @@ class NotificationService:
             except firebase_exceptions.FirebaseError as exc:
 
                 logger.warning(
-                    "notification.push_delivery_failed "
-                    "user_id=%s device_id=%s error=%s",
+                    "notification.push_delivery_failed user_id=%s device_id=%s error=%s",
                     user_id,
                     device.id,
                     str(exc),
                 )
 
-                # Invalid / unregistered FCM tokens should
-                # eventually be deactivated.
                 if NotificationService._is_invalid_token_error(exc):
                     device.is_active = False
 
@@ -180,13 +177,10 @@ class NotificationService:
             except Exception:
 
                 logger.exception(
-                    "notification.push_unexpected_error " "user_id=%s device_id=%s",
+                    "notification.push_unexpected_error user_id=%s device_id=%s",
                     user_id,
                     device.id,
                 )
-
-                # Do not deactivate the device for an
-                # unknown/transient error.
 
     # ------------------------------------------------------------------
     # Determine whether an FCM token is no longer valid

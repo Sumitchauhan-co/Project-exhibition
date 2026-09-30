@@ -37,12 +37,7 @@ export default function App() {
 	}, [isSuccess]);
 
 	if (isPending) {
-		return (
-			// <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-slate-950">
-			// 	<LoadingSpinner label="Checking your session..." />
-			// </div>
-			<InitialLoader />
-		);
+		return <InitialLoader />;
 	}
 
 	return (

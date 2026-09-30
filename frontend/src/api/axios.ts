@@ -35,63 +35,21 @@ const normalizePaymentDetail = (detail: unknown): Record<string, unknown> => {
 const getSuccessMessage = (config: {
 	method?: string;
 	url?: string;
-}): string => {
-	const method = (config.method ?? 'GET').toUpperCase();
+}): string | null => {
 	const url = config.url ?? '';
+	const method = (config.method ?? 'GET').toUpperCase();
 
-	if (url.includes('/auth/signin')) {
-		return 'Signed in successfully.';
-	}
-	if (url.includes('/auth/signup')) {
-		return 'Account created successfully.';
-	}
-	if (url.includes('/auth/signout')) {
-		return 'Signed out successfully.';
-	}
-	if (url.includes('/billing')) {
+	// Only return a message for actions that explicitly require user feedback
+	if (url.includes('/auth/signin')) return 'Signed in successfully.';
+	if (url.includes('/auth/signup')) return 'Account created successfully.';
+	if (url.includes('/auth/signout')) return 'Signed out successfully.';
+	if (url.includes('/billing') && method !== 'GET')
 		return 'Payment request processed successfully.';
-	}
-	if (url.includes('/contact/submit')) {
+	if (url.includes('/contact/submit'))
 		return 'Your message has been sent successfully.';
-	}
-	if (url.includes('/evaluation')) {
-		return 'Benchmark analysis has started.';
-	}
-	if (method === 'POST') {
-		return 'Request completed successfully.';
-	}
-	if (method === 'DELETE') {
-		return 'Item removed successfully.';
-	}
-	if (method === 'PUT' || method === 'PATCH') {
-		return 'Changes saved successfully.';
-	}
+	if (url.includes('/evaluation')) return 'Benchmark analysis has started.';
 
-	return 'Data refreshed successfully.';
-};
-
-const shouldNotifySuccess = (config: {
-	method?: string;
-	url?: string;
-}): boolean => {
-	const method = (config.method ?? 'GET').toUpperCase();
-	const url = config.url ?? '';
-
-	if (url.includes('/auth/refresh')) {
-		return false;
-	}
-	if (url.includes('/auth/me')) {
-		return false;
-	}
-	if (
-		method === 'GET' &&
-		!url.includes('/dashboard') &&
-		!url.includes('/contact')
-	) {
-		return false;
-	}
-
-	return true;
+	return null;
 };
 
 const onRefreshed = (token: string) => {
@@ -140,14 +98,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
 	(response) => {
 		const config = response.config as { method?: string; url?: string };
-		if (
-			response.status >= 200 &&
-			response.status < 300 &&
-			shouldNotifySuccess(config)
-		) {
+		const successMessage = getSuccessMessage(config);
+
+		// Only trigger toast if explicit success message is defined
+		if (response.status >= 200 && response.status < 300 && successMessage) {
 			toast.add({
 				title: 'Success',
-				description: getSuccessMessage(config),
+				description: successMessage,
 				type: 'success',
 				timeout: 4200,
 			});
@@ -229,7 +186,9 @@ api.interceptors.response.use(
 				error.response?.data?.detail ??
 				'Something went wrong. Please try again.';
 			const message =
-				detail.message || 'Something went wrong. Please try again.';
+				typeof detail === 'string'
+					? detail
+					: detail.message || 'Something went wrong. Please try again.';
 
 			toast.add({
 				title: 'Request failed',

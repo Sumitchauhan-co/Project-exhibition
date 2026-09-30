@@ -62,6 +62,8 @@ def send_push_notification(
             body=message,
         ),
         data={
+            "title": title,
+            "body": message,
             "type": notification_type,
         },
     )

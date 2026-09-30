@@ -50,6 +50,7 @@ from app.module.evaluation.model import (
 )
 from app.module.evaluation.service import RAGBenchmarkEngine
 from app.module.notification.model import (
+    Notification,
     NotificationCreate,
     NotificationType,
 )
@@ -284,235 +285,152 @@ def _run_matrix_evaluations(
 
 def process_evaluation_background(
     job_id: str,
-    contents: bytes,
+    user_id: int,
     filename: str,
+    contents: bytes,
     selected_strategies: List[str],
     selected_embeddings: List[str],
     selected_llms: List[str],
     active_vector_db: str,
     evaluation_modes: dict,
-    user_id: int,
-    user_credit_balance: Optional[int],
-    estimated_cost: float,
+    user_credit_balance: Optional[int] = None,
+    estimated_cost: Optional[int] = None,
+    **kwargs,
 ):
-    """Background execution task to run evaluation matrix and persist results."""
+    """
+    Background worker process for evaluation matrix execution.
+    """
+    session_generator = get_session()
+    session = next(session_generator)
 
-    from app.common.db.database import engine as db_engine
-
-    with Session(db_engine) as session:
+    try:
+        # 1. Update job status (safely check for RUNNING or PROCESSING)
         statement = select(EvaluationRun).where(EvaluationRun.job_id == job_id)
-
         eval_run = session.exec(statement).first()
-
-        if not eval_run:
-            logger.error(
-                "evaluation.job_not_found job_id=%s user_id=%s",
-                job_id,
-                user_id,
-            )
-            return
-
-        try:
-            # ---------------------------------------------------------
-            # 1. Mark evaluation as processing
-            # ---------------------------------------------------------
-            eval_run.status = JobStatus.PROCESSING
-
+        if eval_run:
+            if hasattr(JobStatus, "RUNNING"):
+                eval_run.status = JobStatus.RUNNING
+            elif hasattr(JobStatus, "PROCESSING"):
+                eval_run.status = JobStatus.PROCESSING
             session.add(eval_run)
             session.commit()
 
-            # ---------------------------------------------------------
-            # 2. Run evaluation matrix
-            # ---------------------------------------------------------
-            matrix_results = _run_matrix_evaluations(
-                contents,
-                filename,
-                selected_strategies,
-                selected_embeddings,
-                selected_llms,
-                active_vector_db,
-                evaluation_modes,
-                user_credit_balance,
-                estimated_cost,
-            )
+        # 2. Run matrix evaluations
+        results = _run_matrix_evaluations(
+            pdf_bytes=contents,
+            filename=filename,
+            selected_strategies=selected_strategies,
+            selected_embeddings=selected_embeddings,
+            selected_llms=selected_llms,
+            active_vector_db=active_vector_db,
+            evaluation_modes=evaluation_modes,
+            user_credit_balance=user_credit_balance,
+            estimated_credits=estimated_cost,
+        )
 
-            # ---------------------------------------------------------
-            # 3. Persist evaluation results
-            # ---------------------------------------------------------
-            eval_run.total_runs = len(matrix_results)
+        # 3. Store results in Database
+        statement = select(EvaluationRun).where(EvaluationRun.job_id == job_id)
+        eval_run = session.exec(statement).first()
+
+        if eval_run:
             eval_run.status = JobStatus.COMPLETED
+            eval_run.total_runs = len(results)
 
-            for res in matrix_results:
-                result_item = EvaluationResultItem(
+            for res in results:
+                item = EvaluationResultItem(
                     evaluation_run_id=eval_run.id,
-                    chunking_strategy=res.get(
-                        "chunking_strategy",
-                        "",
-                    ),
-                    embedding_model=res.get(
-                        "embedding_model",
-                        "",
-                    ),
-                    llm_model=res.get(
-                        "llm_model",
-                        "",
-                    ),
-                    environment=res.get(
-                        "environment",
-                        APP_ENV,
-                    ),
-                    vector_db=res.get(
-                        "vector_db",
-                        active_vector_db,
-                    ),
+                    environment=res.get("environment", APP_ENV),
+                    vector_db=res.get("vector_db", active_vector_db),
+                    chunking_strategy=res.get("chunking_strategy", ""),
+                    embedding_model=res.get("embedding_model", ""),
+                    llm_model=res.get("llm_model", ""),
                     evaluation_mode=res.get(
-                        "evaluation_mode",
-                        evaluation_modes["evaluation_mode"],
+                        "evaluation_mode", evaluation_modes["evaluation_mode"]
                     ),
-                    latency_ms=res.get("latency_ms"),
+                    latency_ms=res.get("latency_ms", 0.0),
                     error=res.get("error"),
                     metrics=res.get("metrics", {}),
                 )
-
-                session.add(result_item)
-
-            session.commit()
-
-            # ---------------------------------------------------------
-            # 4. SUCCESS NOTIFICATION
-            # ---------------------------------------------------------
-            #
-            # The evaluation has already been committed successfully.
-            # If Firebase fails, the evaluation must remain COMPLETED.
-            #
-            try:
-                NotificationService.create(
-                    session=session,
-                    user_id=user_id,
-                    data=NotificationCreate(
-                        title="Evaluation completed",
-                        message=(
-                            f'Your evaluation for "{filename}" '
-                            "has completed successfully. "
-                            "Your results are ready to view."
-                        ),
-                        type=NotificationType.SUCCESS,
-                    ),
-                )
-
-                logger.info(
-                    "evaluation.success_notification_created " "job_id=%s user_id=%s",
-                    job_id,
-                    user_id,
-                )
-
-            except Exception:
-                logger.exception(
-                    "evaluation.success_notification_failed " "job_id=%s user_id=%s",
-                    job_id,
-                    user_id,
-                )
-
-            # ---------------------------------------------------------
-            # 5. Store latest successful evaluation in memory
-            # ---------------------------------------------------------
-            payload = {
-                "job_id": job_id,
-                "user_id": user_id,
-                "filename": filename,
-                "vector_db": active_vector_db,
-                "evaluation_mode": evaluation_modes["evaluation_mode"],
-                "estimated_credits": estimated_cost,
-                "total_runs": len(matrix_results),
-                "results": matrix_results,
-            }
-
-            store_latest_evaluation_results(
-                user_id,
-                payload,
-            )
-
-            logger.info(
-                "evaluation.completed " "job_id=%s user_id=%s runs=%s",
-                job_id,
-                user_id,
-                len(matrix_results),
-            )
-
-        except Exception as e:
-            # ---------------------------------------------------------
-            # 6. Mark evaluation as failed
-            # ---------------------------------------------------------
-            session.rollback()
-
-            eval_run.status = JobStatus.FAILED
-            eval_run.error_message = str(e)
+                session.add(item)
 
             session.add(eval_run)
             session.commit()
 
-            # ---------------------------------------------------------
-            # 7. Refund evaluation credits
-            # ---------------------------------------------------------
-            BillingService.refund_credits_for_evaluation(
+        # Store in memory cache
+        payload = {
+            "job_id": job_id,
+            "filename": filename,
+            "estimated_credits": estimated_cost or 0,
+            "total_runs": len(results),
+            "results": results,
+        }
+        store_latest_evaluation_results(user_id, payload)
+
+        logger.info("evaluation.completed job_id=%s user_id=%s", job_id, user_id)
+
+        # 4. Trigger Success Notification (FCM Push)
+        try:
+            NotificationService.create(
                 session=session,
                 user_id=user_id,
-                required_credits=estimated_cost,
-                context=(f"{filename} " f"(Fatal system failure: {str(e)})"),
+                data=NotificationCreate(
+                    title="Evaluation completed",
+                    message=f'Your evaluation for "{filename}" has completed successfully.',
+                    type=NotificationType.SUCCESS,
+                ),
+                send_push=True,
             )
-
-            # ---------------------------------------------------------
-            # 8. FAILURE NOTIFICATION
-            # ---------------------------------------------------------
-            #
-            # Do not send the raw exception to the user.
-            # Keep technical details in server logs.
-            #
-            try:
-                NotificationService.create(
-                    session=session,
-                    user_id=user_id,
-                    data=NotificationCreate(
-                        title="Evaluation failed",
-                        message=(
-                            f'Your evaluation for "{filename}" '
-                            "could not be completed. "
-                            "Your credits have been refunded. "
-                            "Please try again."
-                        ),
-                        type=NotificationType.ERROR,
-                    ),
-                )
-
-                logger.info(
-                    "evaluation.failure_notification_created " "job_id=%s user_id=%s",
-                    job_id,
-                    user_id,
-                )
-
-            except Exception:
-                # Notification failure must never hide the
-                # original evaluation failure.
-                logger.exception(
-                    "evaluation.failure_notification_failed " "job_id=%s user_id=%s",
-                    job_id,
-                    user_id,
-                )
-
-            # ---------------------------------------------------------
-            # 9. Log original evaluation error
-            # ---------------------------------------------------------
-            logger.exception(
-                "evaluation.failed " "job_id=%s user_id=%s filename=%s",
+            logger.info(
+                "evaluation.success_notification_created job_id=%s user_id=%s",
                 job_id,
                 user_id,
-                filename,
+            )
+        except Exception:
+            logger.exception(
+                "evaluation.success_notification_failed job_id=%s user_id=%s",
+                job_id,
+                user_id,
             )
 
-            traceback.print_exc()
+    except Exception as exc:
+        logger.exception(
+            "evaluation.failed job_id=%s user_id=%s error=%s",
+            job_id,
+            user_id,
+            str(exc),
+        )
 
-        finally:
-            gc.collect()
+        try:
+            statement = select(EvaluationRun).where(EvaluationRun.job_id == job_id)
+            eval_run = session.exec(statement).first()
+            if eval_run:
+                eval_run.status = JobStatus.FAILED
+                eval_run.error_message = str(exc)
+                session.add(eval_run)
+                session.commit()
+        except Exception:
+            pass
+
+        # 5. Trigger Error Notification (FCM Push)
+        try:
+            NotificationService.create(
+                session=session,
+                user_id=user_id,
+                data=NotificationCreate(
+                    title="Evaluation failed",
+                    message=f'Your evaluation for "{filename}" failed to complete.',
+                    type=NotificationType.ERROR,
+                ),
+                send_push=True,
+            )
+        except Exception:
+            logger.exception(
+                "evaluation.error_notification_failed job_id=%s user_id=%s",
+                job_id,
+                user_id,
+            )
+    finally:
+        session.close()
 
 
 @router.get("/matrix-results")
@@ -882,7 +800,7 @@ async def evaluate_uploaded_pdf(
             session=session,
             user_id=user_id,
             required_credits=estimated_cost,
-            context=(f"{file.filename} " f"(Fatal system failure: {str(e)})"),
+            context=(f"{file.filename} (Fatal system failure: {str(e)})"),
         )
 
         traceback.print_exc()

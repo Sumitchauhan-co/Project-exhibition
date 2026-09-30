@@ -90,7 +90,7 @@ export async function setupForegroundNotifications(
 		if (Notification.permission === 'granted') {
 			const notification = new Notification(title, {
 				body,
-				icon: '/icon-192.png',
+				icon: '/favicon-192x192.png',
 				tag: `rag-benchmark-${Date.now()}`,
 			});
 
