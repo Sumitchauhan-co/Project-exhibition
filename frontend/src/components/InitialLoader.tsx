@@ -9,7 +9,7 @@ export function InitialLoader({
 	label = 'Initializing System',
 }: InitialLoaderProps) {
 	return (
-		<div className="fixed inset-0 z-[9999] flex flex-col items-center justify-between bg-white px-6 py-8 selection:bg-none">
+		<div className="fixed inset-0 z-9999 flex flex-col items-center justify-between bg-white px-6 py-8 selection:bg-none">
 			{/* Spacer to keep central loader perfectly centered */}
 			<div className="h-6" />
 
@@ -50,9 +50,8 @@ export function InitialLoader({
 			{/* Static, Enhanced Bottom Notice */}
 			<div className="max-w-xs text-center">
 				<p className="text-xs leading-relaxed text-slate-400">
-					<span className="font-semibold text-slate-500">Note:</span> Server is
-					waking up from an idle state. Initial connection may take up to few
-					minutes.
+					Server is waking up from an idle state. Initial connection may take up
+					to few minutes.
 				</p>
 			</div>
 		</div>
